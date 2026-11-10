@@ -19,6 +19,7 @@ jobs:
           node-version: '24'
       - run: npm test
       - run: npm run check
+      - run: python3 -m unittest discover -s tests -p 'test_*.py'
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: check
