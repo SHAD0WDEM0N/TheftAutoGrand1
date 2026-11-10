@@ -7,4 +7,6 @@ node_modules/
 *.exe
 *.com
 *.img
+*.mdf
+*.mds
 .DS_Store

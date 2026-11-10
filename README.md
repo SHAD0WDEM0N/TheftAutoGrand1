@@ -16,6 +16,12 @@ Copy the four files inside `site/` to a `docs/` folder on `main`. In Settings â†
 
 ## When your ISO finishes downloading
 
+### If the download contains MDF + MDS
+
+`GrandTheftAuto.mdf` holds disc sectors; the small `GrandTheftAuto.mds` describes the disc layout. They are a pair, not two separate game discs. Keep them together and do not rename MDF to ISO. This importer does not accept MDF/MDS directly. Inspect the MDS track layout before conversion: a data-only ISO cannot preserve CD audio tracks. Convert the data track to ISO for the current loader, keeping both originals; preserving mixed-mode audio requires a BIN/CUE-capable import flow or a prepared private js-dos bundle. Also check the files inside the disc to confirm it contains a DOS executable: the filename alone does not establish the edition.
+
+See [Alcohol's format restrictions](https://support.alcohol-soft.com/en/knowledgebase.php?postid=15034&title=Restrictions+for+creating+image+files).
+
 1. Open the deployed page in a desktop browser, with a keyboard. First select **Try DOS without a disc**: the terminal should say `Emulator smoke test: OK`. End that session.
 2. Choose your `.iso` and select **Launch local game**. A basic ISO-9660 signature check rejects renamed archives. The image is placed at `disc.iso` in the emulator filesystem and mounted read-only as **D:**; **C:** is writable session storage.
 3. The default boot commands are `d:` and `dir`. Inspect the directory listing, then run the disc's **DOS installer**. Use `dir *.exe`, `dir *.bat`, and `cd DIRECTORY` as necessary. For example, run `install` only if `INSTALL.EXE` is actually listed. Install onto C:, then run the installed DOS game executable. We deliberately do not assume a particular disc layout or executable path.
