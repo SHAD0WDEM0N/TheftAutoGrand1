@@ -60,6 +60,8 @@ async function launch(demo = false) {
           ci.events().onMessage((type, ...args) => {
             if (type !== 'error') return;
             const message = args.join(' ');
+            // DOSBox emits ordinary command parsing through the same channel.
+            if (message.startsWith('[LOG_EXEC]Parsing command line:')) return;
             if (message.includes('[LOG_MOUSE]Unhandled videomode')) {
               status('Mouse/video-mode warning. Try the arrow and Enter buttons below for the game menu. If the game is frozen, export a backup before restarting.', 'INPUT NOTICE');
             } else status('Emulator message: ' + message + '. Check the game screen before restarting.', 'CHECK TERMINAL');
