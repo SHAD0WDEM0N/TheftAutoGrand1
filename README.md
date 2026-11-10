@@ -45,29 +45,29 @@ This is a local browser convenience feature, *not* a publicly playable GTA downl
 
 ## Make a smaller private mobile bundle
 
-**iPhone test result (10 Nov 2026):** Safari reported a page crash while importing a 751.9 MiB \`.jsdos\` backup, at about 255 MiB / 33.9% of the loading progress. This is consistent with a mobile WebKit memory limit. The site now warns and blocks large mobile imports **by default**, with an explicit opt-in to attempt them anyway. This does not guarantee that smaller bundles will play.
+**iPhone test result (10 Nov 2026):** Safari reported a page crash while importing a 751.9 MiB `.jsdos` backup, at about 255 MiB / 33.9% of the loading progress. This is consistent with a mobile WebKit memory limit. The site now warns and blocks large mobile imports **by default**, with an explicit opt-in to attempt them anyway. This does not guarantee that smaller bundles will play.
 
 The new layout is a compact DOS utility: the player comes first, desktop settings live in the side panel, and touch screens get hold-to-steer arrow buttons plus GTA's default Enter, Ctrl, Space, Tab, Z, X and Esc controls. Touch controls are not a cure for an out-of-memory crash.
 
 ### Create a smaller private copy on Windows
 
-The repo includes \`scripts/create_mobile_bundle.py\`. It reads and rewrites a **local** .jsdos backup, streaming file-by-file to avoid allocating the full CD image in RAM. It does not upload any game files. You need a *fully installed* game inside the backup. It removes only the disc image you name and preserves the other contents, including installed files and saves.
+The repo includes `scripts/create_mobile_bundle.py`. It reads and rewrites a **local** .jsdos backup, streaming file-by-file to avoid allocating the full CD image in RAM. It does not upload any game files. You need a *fully installed* game inside the backup. It removes only the disc image you name and preserves the other contents, including installed files and saves.
 
-First export a \`.jsdos\` backup from a **working desktop GTA session**. Keep the original safe. From PowerShell inside this repository:
+First export a `.jsdos` backup from a **working desktop GTA session**. Keep the original safe. From PowerShell inside this repository:
 
-\`\`\`powershell
+```powershell
 py .\scripts\create_mobile_bundle.py "C:\path\to\Datafile.jsdos" --list
-\`\`\`
+```
 
-Inspect the list. If it contains a \`disc.iso\` member and GTA can run from the installed C: files, create a private mobile candidate. Replace the example command with the exact DOS commands that *you* used to start GTA; these may differ by edition and installation path:
+Inspect the list. If it contains a `disc.iso` member and GTA can run from the installed C: files, create a private mobile candidate. Replace the example command with the exact DOS commands that *you* used to start GTA; these may differ by edition and installation path:
 
-\`\`\`powershell
+```powershell
 py .\scripts\create_mobile_bundle.py "C:\path\to\Datafile.jsdos" --boot "c:;cd GTA;GTA.BAT"
-\`\`\`
+```
 
-The tool writes \`Datafile-mobile.jsdos\` beside the original, reports the removed data and new size, and refuses to overwrite either file. If the disc filename is different, use \`--drop "actual/archive/path.iso"\` matching the \`--list\` output. Use \`--output "C:\path\to\GTA-Mobile.jsdos"\` to choose a different new filename.
+The tool writes `Datafile-mobile.jsdos` beside the original, reports the removed data and new size, and refuses to overwrite either file. If the disc filename is different, use `--drop "actual/archive/path.iso"` matching the `--list` output. Use `--output "C:\path\to\GTA-Mobile.jsdos"` to choose a different new filename.
 
-**Important:** Some versions of GTA read executable/data/audio content from the CD while running. If the game fails without \`disc.iso\`, removing it is **not** a valid solution for that edition. Return to the original backup; next we would investigate a correctly prepared, more efficient CD image or a streaming drive. A plain ISO also cannot contain the original CD-audio tracks. Test the compact candidate on **desktop first**, then import it into the iPhone's browser using Files. Keeping the candidate smaller than about 160 MiB avoids the site's mobile warning, but is *not* a guaranteed WebKit memory threshold. Do not publish the ISO, backup, compact copy, or Rockstar assets in this public repository.
+**Important:** Some versions of GTA read executable/data/audio content from the CD while running. If the game fails without `disc.iso`, removing it is **not** a valid solution for that edition. Return to the original backup; next we would investigate a correctly prepared, more efficient CD image or a streaming drive. A plain ISO also cannot contain the original CD-audio tracks. Test the compact candidate on **desktop first**, then import it into the iPhone's browser using Files. Keeping the candidate smaller than about 160 MiB avoids the site's mobile warning, but is *not* a guaranteed WebKit memory threshold. Do not publish the ISO, backup, compact copy, or Rockstar assets in this public repository.
 
 If you use the one-click feature on an iPhone, its saved copy is local to the **iPhone browser**; the desktop copy is not automatically synced. Save/export backups regularly.
 
