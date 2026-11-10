@@ -35,7 +35,7 @@ See [Alcohol's format restrictions](https://support.alcohol-soft.com/en/knowledg
 Once GTA is installed and running, you can set it up so later visits only require pressing **Play saved GTA**:
 
 1. Launch your personal ISO or a previously exported .jsdos bundle, install GTA if necessary, and confirm the DOS game runs.
-2. Under **One-click garage → Set up or update one-click launch**, type the **DOS commands that actually launch your installed game** (not the setup/installer commands). Example only, if your folder is `C:\\GTA`: `c:`, `cd GTA`, `GTA.BAT`. Your actual folder and executable may differ.
+2. Under **One-click garage → Set up or update one-click launch**, type the **DOS commands that actually launch your installed game** (not the setup/installer commands). Example only, if your folder is `C:\GTA`: `c:`, `cd GTA`, `GTA.BAT`. Your actual folder and executable may differ.
 3. While the session is running, choose **Save / update one-click shortcut**. The page captures your emulator filesystem as a .jsdos bundle, updates its autoexec script using the entered commands, and saves that bundle into this browser's IndexedDB. The saved copy stays private on your device.
 4. On the same browser/profile/device, return to the website and press **Play saved GTA**. No ISO selection or DOS command typing is necessary if the shortcut and game files are still present.
 5. After game progress is saved, choose **Save / update one-click shortcut** again to update the locally stored copy; also periodically **Export backup** to a .jsdos file as an independent recovery option.
@@ -45,7 +45,7 @@ This is a local browser convenience feature, *not* a publicly playable GTA downl
 
 ## Compatibility and limits
 
-- **GTA gameplay is not yet verified:** the user's ISO was unavailable during implementation. The application does not claim to identify a GTA edition or auto-install it. Disc mounting, the correct executable, graphics, sound, controls, performance and save restoration must be checked against the actual disc.
+- **GTA gameplay was reported working by the user with their ISO:** the local game was not available for automated regression testing. One-click replay, graphics, sound, controls, performance and save restoration on the new shortcut path still need explicit verification with the actual disc.
 - Imports support `.iso` and ZIP-based `.jsdos` bundles, not ordinary ZIPs, BIN/CUE pairs, compressed disc archives, or Windows-only installers. Signature checks detect obvious wrong formats; they are not a full archive integrity check.
 - Imports are capped at **900 MiB** before reading the complete file. Several copies can exist in memory during loading/export, so even smaller images can exceed browser memory. Use a prepared smaller DOS bundle if a large ISO crashes the tab. A full backup may exceed the import cap if installation adds many files; use js-dos's file tools to prepare a smaller private bundle in that case.
 - ISO images normally omit audio tracks from mixed-mode CDs. Sound effects may work while CD music is absent. Preserving original CD audio requires a different image/import workflow.
@@ -69,7 +69,7 @@ Open `http://localhost:8765` (do not open `index.html` directly as a file). `npm
 
 ### Manual acceptance checklist
 
-Implementation checks completed: four automated tests and JavaScript syntax checks passed. In the browser, the no-disc DOS test reached its prompt, pause/resume worked, and an exported smoke-test bundle successfully reopened. End-session returned to the import screen. A narrow viewport showed the stacked layout without horizontal overflow. Actual GTA installation/gameplay and game-save restoration remain untested pending the ISO.
+The original implementation passed four automated tests and JavaScript syntax checks. ChatGPT Work previously tested the no-disc DOS prompt, pause/resume, smoke-test bundle import, end-session and narrow layout. The user has since confirmed GTA itself launches and plays. The new one-click launch tests and first actual shortcut replay have not yet been independently verified.
 
 - Desktop and narrow viewport: readable layout, keyboard navigation and visible focus.
 - No-disc test reaches DOS and prints the smoke message; pause/resume, fullscreen, end and restart work.
