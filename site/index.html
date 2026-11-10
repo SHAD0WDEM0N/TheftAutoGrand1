@@ -29,14 +29,26 @@
 dir</textarea><p>The disc mounts as D:; C: is writable. Locate and run the DOS installer, then its installed executable. Commands run inside DOSBox.</p></details>
           <button id="launch" class="primary" disabled>Launch local game ↗</button>
           <button id="demo" class="secondary">Try DOS without a disc</button>
-          <p class="privacy">Your game is read into browser memory, not uploaded by this site. Emulator code loads from jsDelivr. No cloud saves.</p>
+          <div class="quick-launch">
+            <p class="eyebrow">ONE-CLICK GARAGE</p>
+            <button id="quick-play" class="primary" disabled>▶ Play saved GTA</button>
+            <p id="quick-info">No saved game on this browser yet.</p>
+            <details><summary>Set up or update one-click launch</summary>
+              <label for="quick-commands">DOS commands that start your installed GTA</label>
+              <textarea id="quick-commands" rows="3" spellcheck="false" placeholder="c:&#10;cd GTA&#10;GTA.BAT"></textarea>
+              <p>First launch your ISO or backup, install GTA and verify it works. Enter the commands you used to start the installed game (not its installer), then click Save shortcut while the session is running.</p>
+              <button id="remember" class="secondary" disabled>Save / update one-click shortcut</button>
+            </details>
+            <button id="forget" class="quiet" disabled>Forget local GTA shortcut</button>
+          </div>
+          <p class="privacy">Your game is never uploaded. An optional one-click copy is stored only in this browser's local storage (IndexedDB). Storage may be deleted by browser cleanup. Emulator code loads from jsDelivr. No cloud saves.</p>
         </aside>
         <div class="screen-panel"><div class="screen-bar"><span>● DOS TERMINAL</span><span>640 × 480 / 4:3</span></div><div id="player"><div class="idle"><div class="disc">◎</div><h3>Ready when you are.</h3><p>Select your local disc to start.<br>Still downloading? Try the DOS smoke test.</p></div></div><div class="controls" aria-label="Game menu keys"><button data-dos-key="265" disabled aria-label="Send Up arrow to game">↑ Up</button><button data-dos-key="264" disabled aria-label="Send Down arrow to game">↓ Down</button><button data-dos-key="257" disabled aria-label="Send Enter to game">Enter / Select</button><button data-dos-key="32" disabled aria-label="Send Space to game">Space</button><button data-dos-key="256" disabled aria-label="Send Escape to game">Esc / Back</button></div><p class="input-help">Game menu: use ↑ / ↓ then Enter, or the buttons above. For keyboard play, click inside the game picture first. These are key presses, not mouse clicks.</p><div class="controls"><button id="pause" disabled>Pause</button><button id="fullscreen" disabled>Fullscreen</button><button id="export" disabled>Export backup</button><button id="stop" disabled>End session</button></div></div>
       </div>
       <p id="status" role="status" aria-live="polite">Choose a file, or try the DOS smoke test. Nothing is running yet.</p>
       <p class="session-note">Save in the game, then export a backup before ending your session. Closing or reloading this tab discards the session. Backups may include your disc and installed game; keep them private.</p>
     </section>
-    <section class="guide" id="guide"><div><p class="eyebrow">02 / FIRST RUN</p><h2>A little setup.<br>A lot of nostalgia.</h2></div><ol><li><strong>Bring the DOS edition.</strong><p>Select your personally owned ISO. Windows-only editions need a different setup. Large images need plenty of free memory.</p></li><li><strong>Install, then hit the streets.</strong><p>At the D: prompt, use <code>dir</code> to find the installer. Install to C: and run the installed DOS executable. Disc layouts vary; there is no guessed auto-launch command.</p></li><li><strong>Keep your progress.</strong><p>Use the game’s save option, then Export backup. Next time, select that .jsdos file. Click the screen for keyboard control; Esc releases a captured pointer.</p></li></ol></section>
+    <section class="guide" id="guide"><div><p class="eyebrow">02 / FIRST RUN</p><h2>A little setup.<br>A lot of nostalgia.</h2></div><ol><li><strong>Bring the DOS edition.</strong><p>Select your personally owned ISO. Windows-only editions need a different setup. Large images need plenty of free memory.</p></li><li><strong>Install, then hit the streets.</strong><p>At the D: prompt, use <code>dir</code> to find the installer. Install to C: and run the installed DOS executable. Disc layouts vary; there is no guessed auto-launch command.</p></li><li><strong>Save a one-click shortcut.</strong><p>After GTA works, enter its DOS launch commands under One-click garage and press Save shortcut. On later visits, press Play saved GTA. Update it again after saving progress; exported .jsdos backups remain your safety copy.</p></li></ol></section>
     <details class="faq"><summary>Compatibility & troubleshooting</summary><p>Desktop Chromium or Firefox with a keyboard is recommended. Browser memory can limit CD-sized images; this loader caps imports at 900 MiB. A raw ISO does not include CD audio tracks, so music may be missing. BIN/CUE and Windows installers are not supported by this import flow.</p><p>If loading stalls, end the session and try again. Check your connection or content blocker for jsDelivr. The DOS smoke test checks the emulator, not GTA compatibility. This particular GTA disc has not yet been tested.</p></details>
   </main>
   <footer><span>THEFT AUTO GRAND <b>/ PERSONAL ARCHIVE</b></span><p>Unofficial fan-made launcher. No GTA files included. Grand Theft Auto belongs to its respective rights holders.</p></footer>
