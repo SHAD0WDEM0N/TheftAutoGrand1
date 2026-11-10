@@ -10,6 +10,7 @@ function controls() {
   $('launch').disabled = busy || active || !$('game').files.length;
   $('demo').disabled = busy || active;
   for (const id of ['pause', 'fullscreen', 'export']) $(id).disabled = busy || !ci;
+  for (const button of document.querySelectorAll('[data-dos-key]')) button.disabled = busy || !ci;
   $('stop').disabled = busy || !active;
 }
 function loadLibrary() {
@@ -56,7 +57,13 @@ async function launch(demo = false) {
         if (event === 'ci-ready') {
           ci = value; clearTimeout(timer); controls();
           status(demo ? 'DOS smoke test running. Look for “Emulator smoke test: OK” in the terminal.' : 'DOS is running. Check the terminal for mount results, then install or launch your game.', 'DOS RUNNING');
-          ci.events().onMessage((type, ...args) => { if (type === 'error') status('Emulator error: ' + args.join(' ') + '. End session to retry.', 'CHECK TERMINAL'); });
+          ci.events().onMessage((type, ...args) => {
+            if (type !== 'error') return;
+            const message = args.join(' ');
+            if (message.includes('[LOG_MOUSE]Unhandled videomode')) {
+              status('Mouse/video-mode warning. Try the arrow and Enter buttons below for the game menu. If the game is frozen, export a backup before restarting.', 'INPUT NOTICE');
+            } else status('Emulator message: ' + message + '. Check the game screen before restarting.', 'CHECK TERMINAL');
+          });
         }
       }
     });
@@ -77,6 +84,14 @@ $('launch').addEventListener('click', () => launch());
 $('demo').addEventListener('click', () => launch(true));
 $('pause').addEventListener('click', () => { paused = !paused; player.setPaused(paused); $('pause').textContent = paused ? 'Resume' : 'Pause'; });
 $('fullscreen').addEventListener('click', () => player.setFullScreen(true));
+for (const button of document.querySelectorAll('[data-dos-key]')) {
+  button.addEventListener('click', () => {
+    if (!ci || busy) return;
+    if (paused) { player.setPaused(false); paused = false; $('pause').textContent = 'Pause'; }
+    ci.simulateKeyPress(Number(button.dataset.dosKey));
+    status('Sent ' + button.textContent.trim() + ' to DOS. These buttons control the selected game menu item.', 'DOS RUNNING');
+  });
+}
 $('stop').addEventListener('click', async () => {
   if (!confirm('End this session? Any changes not exported in a backup will be lost.')) return;
   busy = true; controls();
