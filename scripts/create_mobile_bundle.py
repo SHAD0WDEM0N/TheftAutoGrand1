@@ -19,7 +19,10 @@ CONFIG = ".jsdos/dosbox.conf"
 
 
 def normalize_name(name: str) -> str:
-    return name.replace("\\", "/").lstrip("./").lower()
+    clean = name.replace("\\", "/")
+    while clean.startswith("./"):
+        clean = clean[2:]
+    return clean.lower()
 
 
 def make_autoexec(original: str, commands: list[str]) -> str:
