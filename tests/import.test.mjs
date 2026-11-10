@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fileKind, validateFile, configuration, MAX_BYTES } from '../site/core.js';
+import { fileKind, validateFile, configuration, MAX_BYTES, MOBILE_CAUTION_BYTES, mobileBundleRisk } from '../site/core.js';
 test('reject unsupported, empty, and oversized files before allocating memory', () => {
   for (const file of [{name:'x.bin',size:10},{name:'x.iso',size:0},{name:'x.iso',size:MAX_BYTES+1}]) assert.throws(() => fileKind(file));
   assert.equal(fileKind({name:'DISC.ISO',size:100}), 'iso');
@@ -20,4 +20,11 @@ test('mount before running custom commands; smoke test requires no game', () => 
   assert.ok(conf.includes('imgmount d "disc.iso" -t iso\nd:\ndir'));
   assert.ok(!configuration(false).includes('disc.iso'));
   assert.match(configuration(false), /Emulator smoke test: OK/);
+});
+
+test('mobile bundle memory guard warns on larger files without blocking desktop', () => {
+  assert.equal(mobileBundleRisk(751.9 * 1048576, true), true);
+  assert.equal(mobileBundleRisk(751.9 * 1048576, false), false);
+  assert.equal(mobileBundleRisk(MOBILE_CAUTION_BYTES, true), false);
+  assert.equal(mobileBundleRisk(35 * 1048576, true), false);
 });

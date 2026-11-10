@@ -1,17 +1,47 @@
-import { validateFile, configuration } from './core.js';
+import { validateFile, configuration, quickStartConfig, mobileBundleRisk } from './core.js';
+import { loadPrivateShortcut, savePrivateShortcut, clearPrivateShortcut } from './storage.js';
 const $ = (id) => document.getElementById(id);
 const CDN = 'https://cdn.jsdelivr.net/npm/js-dos@8.5.3/dist/';
 let player = null, ci = null, bundleUrl = null, busy = false, active = false, paused = false, timer;
-let libraryPromise;
+let libraryPromise, bundleToolsPromise, savedShortcut = null;
 const idle = $('player').innerHTML;
+const heldKeys = new Map();
+const isTouchDevice = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && matchMedia('(pointer:coarse)').matches);
+function tooLargeForMobile(file) { return mobileBundleRisk(file?.size || 0, isTouchDevice); }
+function mobileNeedsOverride(quick = false) {
+  return tooLargeForMobile(quick ? savedShortcut?.bundle : $('game').files[0]) && !$('override-mobile').checked;
+}
+function updateMobileNotice() {
+  const file = $('game').files[0];
+  const target = file || savedShortcut?.bundle;
+  const large = tooLargeForMobile(target);
+  $('mobile-warning').hidden = !large;
+  if (large) {
+    $('mobile-warning-text').textContent = 'This game file is ' + (target.size / 1048576).toFixed(1) +
+      ' MiB. Your iPhone recording shows Safari crashing at approximately 255 MiB while loading a 751.9 MiB bundle. ' +
+      'For a reliable mobile attempt, make a much smaller local game bundle on your PC. You can override this warning, but Safari may crash again.';
+  }
+  if (!large) $('override-mobile').checked = false;
+}
+function releaseHeldKeys() {
+  for (const { code, button } of heldKeys.values()) {
+    if (ci) ci.sendKeyEvent(code, false);
+    button.classList.remove('pressed');
+  }
+  heldKeys.clear();
+}
+
 function status(message, badge) { $('status').textContent = message; if (badge) $('badge').textContent = badge; }
 function controls() {
   $('game').disabled = busy || active;
-  $('launch').disabled = busy || active || !$('game').files.length;
+  $('launch').disabled = busy || active || !$('game').files.length || mobileNeedsOverride();
   $('demo').disabled = busy || active;
   for (const id of ['pause', 'fullscreen', 'export']) $(id).disabled = busy || !ci;
-  for (const button of document.querySelectorAll('[data-dos-key]')) button.disabled = busy || !ci;
+  for (const button of document.querySelectorAll('[data-dos-key],[data-hold-key]')) button.disabled = busy || !ci;
   $('stop').disabled = busy || !active;
+  $('quick-play').disabled = busy || active || !savedShortcut || mobileNeedsOverride(true);
+  $('remember').disabled = busy || !ci || !$('quick-commands').value.trim();
+  $('forget').disabled = busy || active || !savedShortcut;
 }
 function loadLibrary() {
   if (window.Dos) return Promise.resolve();
@@ -26,21 +56,44 @@ function loadLibrary() {
   });
   return libraryPromise;
 }
+function bundleTools() {
+  if (window.emulators?.bundleConfig && window.emulators?.bundleUpdateConfig) return Promise.resolve(window.emulators);
+  if (bundleToolsPromise) return bundleToolsPromise;
+  bundleToolsPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/emulators@8.5.2/dist/emulators.min.js';
+    script.onload = () => {
+      if (window.emulators?.bundleConfig && window.emulators?.bundleUpdateConfig) resolve(window.emulators);
+      else { bundleToolsPromise = null; reject(new Error('Bundle editing tools are unavailable. Export a backup instead.')); }
+    };
+    script.onerror = () => { bundleToolsPromise = null; reject(new Error('Could not load bundle editing tools. Export a backup instead.')); };
+    document.head.append(script);
+  });
+  return bundleToolsPromise;
+}
 async function end() {
   clearTimeout(timer);
+  releaseHeldKeys();
   if (player) await player.stop();
   player = null; ci = null; active = false; paused = false;
   if (bundleUrl) URL.revokeObjectURL(bundleUrl);
   bundleUrl = null; $('pause').textContent = 'Pause'; $('player').innerHTML = idle; controls();
 }
-async function launch(demo = false) {
+async function launch(demo = false, quick = false) {
   busy = true; controls();
   try {
-    const file = demo ? null : $('game').files[0];
-    const kind = demo ? null : await validateFile(file);
+    const file = demo || quick ? null : $('game').files[0];
+    const kind = demo ? null : quick ? 'jsdos' : await validateFile(file);
+    if (!demo && mobileNeedsOverride(quick)) {
+      throw new Error('Large game bundle blocked to avoid another mobile Safari crash. Use a smaller private bundle or tick Attempt anyway.');
+    }
     status('Loading emulator code…', 'LOADING'); await loadLibrary();
     const source = {};
-    if (kind === 'jsdos') { bundleUrl = URL.createObjectURL(file); source.url = bundleUrl; }
+    if (quick) {
+      if (!savedShortcut?.bundle) throw new Error('No saved GTA shortcut found on this browser.');
+      bundleUrl = URL.createObjectURL(savedShortcut.bundle);
+      source.url = bundleUrl;
+    } else if (kind === 'jsdos') { bundleUrl = URL.createObjectURL(file); source.url = bundleUrl; }
     else {
       source.dosboxConf = configuration(kind === 'iso', $('commands').value);
       if (kind === 'iso') {
@@ -52,11 +105,12 @@ async function launch(demo = false) {
     player = window.Dos($('player'), {
       ...source, pathPrefix: CDN + 'emulators/', backend: 'dosbox', backendLocked: true,
       theme: 'dark', autoStart: true, countDownStart: 0, autoSave: false,
+      softFullscreen: isTouchDevice,
       fsChanges: { local: false }, renderAspect: '4/3', imageRendering: 'pixelated',
       onEvent(event, value) {
         if (event === 'ci-ready') {
           ci = value; clearTimeout(timer); controls();
-          status(demo ? 'DOS smoke test running. Look for “Emulator smoke test: OK” in the terminal.' : 'DOS is running. Check the terminal for mount results, then install or launch your game.', 'DOS RUNNING');
+          status(demo ? 'DOS smoke test running. Look for “Emulator smoke test: OK” in the terminal.' : quick ? 'Starting your saved GTA shortcut. Click the game picture for keyboard control.' : 'DOS is running. Check the terminal for mount results, then install or launch your game.', 'DOS RUNNING');
           ci.events().onMessage((type, ...args) => {
             if (type !== 'error') return;
             const message = args.join(' ');
@@ -80,19 +134,42 @@ async function launch(demo = false) {
 $('game').addEventListener('change', () => {
   const file = $('game').files[0];
   $('file-info').textContent = file ? `${file.name} · ${(file.size / 1048576).toFixed(1)} MiB` : 'No disc selected';
+  $('override-mobile').checked = false;
+  updateMobileNotice();
   status('File selected locally. Launch to validate and load it.', 'READY TO IMPORT'); controls();
 });
 $('launch').addEventListener('click', () => launch());
 $('demo').addEventListener('click', () => launch(true));
+$('quick-play').addEventListener('click', () => launch(false, true));
+$('quick-commands').addEventListener('input', controls);
+$('override-mobile').addEventListener('change', controls);
 $('pause').addEventListener('click', () => { paused = !paused; player.setPaused(paused); $('pause').textContent = paused ? 'Resume' : 'Pause'; });
 $('fullscreen').addEventListener('click', () => player.setFullScreen(true));
-for (const button of document.querySelectorAll('[data-dos-key]')) {
-  button.addEventListener('click', () => {
-    if (!ci || busy) return;
+// Touch buttons hold the original DOS key down until the finger is released.
+// This is essential for steering/acceleration (a simulated tap does not work).
+for (const button of document.querySelectorAll('[data-hold-key]')) {
+  const release = (event) => {
+    const held = heldKeys.get(event.pointerId);
+    if (!held) return;
+    heldKeys.delete(event.pointerId);
+    button.classList.remove('pressed');
+    if (ci) ci.sendKeyEvent(held.code, false);
+  };
+  button.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    if (!ci || busy || button.disabled) return;
     if (paused) { player.setPaused(false); paused = false; $('pause').textContent = 'Pause'; }
-    ci.simulateKeyPress(Number(button.dataset.dosKey));
-    status('Sent ' + button.textContent.trim() + ' to DOS. These buttons control the selected game menu item.', 'DOS RUNNING');
+    const code = Number(button.dataset.holdKey);
+    if (heldKeys.has(event.pointerId)) return;
+    if (button.setPointerCapture) button.setPointerCapture(event.pointerId);
+    heldKeys.set(event.pointerId, { code, button });
+    button.classList.add('pressed');
+    ci.sendKeyEvent(code, true);
   });
+  for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    button.addEventListener(eventName, release);
+  }
+  button.addEventListener('contextmenu', (event) => event.preventDefault());
 }
 $('stop').addEventListener('click', async () => {
   if (!confirm('End this session? Any changes not exported in a backup will be lost.')) return;
@@ -113,5 +190,61 @@ $('export').addEventListener('click', async () => {
     status('Backup download requested. Confirm the file is saved before ending this session. Keep it private.');
   } catch (error) { status('Backup failed: ' + error.message + ' Keep this tab open and retry.'); }
   finally { if (!paused) ci.resume(); busy = false; controls(); }
+});
+
+$('remember').addEventListener('click', async () => {
+  const commands = $('quick-commands').value;
+  busy = true; controls();
+  status('Saving an installed copy and launch settings into this browser…', 'SAVING');
+  const shouldResume = !paused;
+  let suspended = false;
+  try {
+    if (!ci) throw new Error('Launch and install GTA before setting up a one-click shortcut.');
+    const tools = await bundleTools();
+    ci.pause(); suspended = true;
+    const bytes = await ci.persist(false);
+    if (!bytes) throw new Error('Could not capture the installed game. Export a backup first.');
+    const config = await tools.bundleConfig(bytes);
+    if (!config?.dosboxConf) throw new Error('The exported backup does not contain a DOSBox configuration.');
+    config.dosboxConf = quickStartConfig(config.dosboxConf, commands);
+    const updated = await tools.bundleUpdateConfig(bytes, config);
+    if (!updated) throw new Error('Could not write launch settings into the backup.');
+    const bundle = new Blob([updated], { type: 'application/zip' });
+    await savePrivateShortcut(bundle, commands.trim());
+    savedShortcut = { bundle, commands: commands.trim(), savedAt: Date.now() };
+    $('quick-info').textContent = 'GTA is saved privately in this browser. Next visit, press Play saved GTA.';
+    updateMobileNotice();
+    status('One-click shortcut saved locally! Keep a separate exported backup; browser storage can be cleared.', 'SHORTCUT READY');
+  } catch (error) {
+    status('Could not save shortcut: ' + error.message + ' Your running game is unchanged.', 'SAVE FAILED');
+  } finally {
+    if (suspended && shouldResume && ci) ci.resume();
+    busy = false; controls();
+  }
+});
+$('forget').addEventListener('click', async () => {
+  if (!confirm('Remove the saved GTA shortcut from this browser? Export a backup first if needed.')) return;
+  busy = true; controls();
+  try {
+    await clearPrivateShortcut();
+    savedShortcut = null;
+    $('quick-info').textContent = 'No saved game on this browser yet.';
+    updateMobileNotice();
+    status('Saved shortcut removed from this browser. Your exported backup files are unchanged.', 'AWAITING INPUT');
+  } catch (error) {
+    status('Could not remove local copy: ' + error.message, 'STORAGE ERROR');
+  } finally { busy = false; controls(); }
+});
+loadPrivateShortcut().then(record => {
+  if (record?.bundle instanceof Blob) {
+    savedShortcut = record;
+    $('quick-commands').value = record.commands || '';
+    $('quick-info').textContent = 'Saved GTA ready on this device. Press Play saved GTA to start.';
+    updateMobileNotice();
+  }
+  controls();
+}).catch(error => {
+  $('quick-info').textContent = 'Local game storage unavailable: ' + error.message;
+  controls();
 });
 window.addEventListener('beforeunload', (event) => { if (active) { event.preventDefault(); event.returnValue = ''; } });

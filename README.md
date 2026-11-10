@@ -30,14 +30,55 @@ See [Alcohol's format restrictions](https://support.alcohol-soft.com/en/knowledg
 6. Save inside the game, preferably exit back to DOS, then choose **Export backup**. Confirm the download completed before closing the tab. It exports the full emulator filesystem as `dos-garage-backup.jsdos`, including installed files and potentially the ISO. Keep that copyrighted-content backup on your own device.
 7. Next time, select the exported `.jsdos` instead of the ISO. It includes the original boot configuration; if that returns to D:, switch to C: and run the installed game again. To make a tailored launch configuration, use Boot settings on an ISO session or edit your private bundle with js-dos tools. Never commit the private bundle here.
 
+## Optional one-click launch (private browser copy)
+
+Once GTA is installed and running, you can set it up so later visits only require pressing **Play saved GTA**:
+
+1. Launch your personal ISO or a previously exported .jsdos bundle, install GTA if necessary, and confirm the DOS game runs.
+2. Under **One-click garage → Set up or update one-click launch**, type the **DOS commands that actually launch your installed game** (not the setup/installer commands). Example only, if your folder is `C:\GTA`: `c:`, `cd GTA`, `GTA.BAT`. Your actual folder and executable may differ.
+3. While the session is running, choose **Save / update one-click shortcut**. The page captures your emulator filesystem as a .jsdos bundle, updates its autoexec script using the entered commands, and saves that bundle into this browser's IndexedDB. The saved copy stays private on your device.
+4. On the same browser/profile/device, return to the website and press **Play saved GTA**. No ISO selection or DOS command typing is necessary if the shortcut and game files are still present.
+5. After game progress is saved, choose **Save / update one-click shortcut** again to update the locally stored copy; also periodically **Export backup** to a .jsdos file as an independent recovery option.
+6. **Forget local GTA shortcut** deletes this site's remembered copy from IndexedDB. It does not delete external backup downloads.
+
+This is a local browser convenience feature, *not* a publicly playable GTA download. Browsers may reject large saved copies due to storage quota or clear private data at any time; private browsing modes are not supported. Do not rely on it as your only save. The player remains intentionally configured without automatic cloud or local incremental saves. The feature uses js-dos bundle configuration utilities to rewrite the private bundle's DOSBox autoexec section; the correct commands must be supplied by the user. GTA gameplay from the saved shortcut is not verified until tested with the actual game files.
+
+## Make a smaller private mobile bundle
+
+**iPhone test result (10 Nov 2026):** Safari reported a page crash while importing a 751.9 MiB `.jsdos` backup, at about 255 MiB / 33.9% of the loading progress. This is consistent with a mobile WebKit memory limit. The site now warns and blocks large mobile imports **by default**, with an explicit opt-in to attempt them anyway. This does not guarantee that smaller bundles will play.
+
+The new layout is a compact DOS utility: the player comes first, desktop settings live in the side panel, and touch screens get hold-to-steer arrow buttons plus GTA's default Enter, Ctrl, Space, Tab, Z, X and Esc controls. Touch controls are not a cure for an out-of-memory crash.
+
+### Create a smaller private copy on Windows
+
+The repo includes `scripts/create_mobile_bundle.py`. It reads and rewrites a **local** .jsdos backup, streaming file-by-file to avoid allocating the full CD image in RAM. It does not upload any game files. You need a *fully installed* game inside the backup. It removes only the disc image you name and preserves the other contents, including installed files and saves.
+
+First export a `.jsdos` backup from a **working desktop GTA session**. Keep the original safe. From PowerShell inside this repository:
+
+```powershell
+py .\scripts\create_mobile_bundle.py "C:\path\to\Datafile.jsdos" --list
+```
+
+Inspect the list. If it contains a `disc.iso` member and GTA can run from the installed C: files, create a private mobile candidate. Replace the example command with the exact DOS commands that *you* used to start GTA; these may differ by edition and installation path:
+
+```powershell
+py .\scripts\create_mobile_bundle.py "C:\path\to\Datafile.jsdos" --boot "c:;cd GTA;GTA.BAT"
+```
+
+The tool writes `Datafile-mobile.jsdos` beside the original, reports the removed data and new size, and refuses to overwrite either file. If the disc filename is different, use `--drop "actual/archive/path.iso"` matching the `--list` output. Use `--output "C:\path\to\GTA-Mobile.jsdos"` to choose a different new filename.
+
+**Important:** Some versions of GTA read executable/data/audio content from the CD while running. If the game fails without `disc.iso`, removing it is **not** a valid solution for that edition. Return to the original backup; next we would investigate a correctly prepared, more efficient CD image or a streaming drive. A plain ISO also cannot contain the original CD-audio tracks. Test the compact candidate on **desktop first**, then import it into the iPhone's browser using Files. Keeping the candidate smaller than about 160 MiB avoids the site's mobile warning, but is *not* a guaranteed WebKit memory threshold. Do not publish the ISO, backup, compact copy, or Rockstar assets in this public repository.
+
+If you use the one-click feature on an iPhone, its saved copy is local to the **iPhone browser**; the desktop copy is not automatically synced. Save/export backups regularly.
+
 ## Compatibility and limits
 
-- **GTA gameplay is not yet verified:** the user's ISO was unavailable during implementation. The application does not claim to identify a GTA edition or auto-install it. Disc mounting, the correct executable, graphics, sound, controls, performance and save restoration must be checked against the actual disc.
+- **GTA gameplay was reported working by the user with their ISO:** the local game was not available for automated regression testing. One-click replay, graphics, sound, controls, performance and save restoration on the new shortcut path still need explicit verification with the actual disc.
 - Imports support `.iso` and ZIP-based `.jsdos` bundles, not ordinary ZIPs, BIN/CUE pairs, compressed disc archives, or Windows-only installers. Signature checks detect obvious wrong formats; they are not a full archive integrity check.
 - Imports are capped at **900 MiB** before reading the complete file. Several copies can exist in memory during loading/export, so even smaller images can exceed browser memory. Use a prepared smaller DOS bundle if a large ISO crashes the tab. A full backup may exceed the import cap if installation adds many files; use js-dos's file tools to prepare a smaller private bundle in that case.
 - ISO images normally omit audio tracks from mixed-mode CDs. Sound effects may work while CD music is absent. Preserving original CD audio requires a different image/import workflow.
-- Everything is temporary. Automatic and cloud saves are disabled. End-session and tab-close warnings help avoid accidental loss, but browser crashes cannot be intercepted. Export backups regularly; merely saving inside the game is not a durable backup.
-- Emulator code is loaded on first launch from **jsDelivr**, pinned to **js-dos 8.5.3**, including its matching `dist/emulators/` assets. Google Fonts supplies the display fonts; system fallbacks work when unavailable. These providers receive normal network requests. No site analytics, game upload endpoint, or server storage is implemented. Imported bundles can contain their own DOS configuration: use trusted personal bundles.
+- Active sessions are temporary. Automatic and cloud saves are disabled. The optional one-click shortcut is an explicit, private copy of the emulator filesystem held in browser IndexedDB; it is not automatically updated as you play. End-session and tab-close warnings help avoid accidental loss, but browser crashes cannot be intercepted. Export backups regularly and manually update the shortcut after saving.
+- Emulator code is loaded on first launch from **jsDelivr**, pinned to **js-dos 8.5.3**, including its matching `dist/emulators/` assets. The one-click shortcut creator also loads the **emulators 8.5.2** bundle utilities if unavailable on the page. Google Fonts supplies the display fonts; system fallbacks work when unavailable. These providers receive normal network requests. No site analytics, game upload endpoint, or server storage is implemented. Imported bundles can contain their own DOS configuration: use trusted personal bundles.
 - The page uses normal js-dos worker mode without requiring custom COOP/COEP headers, which GitHub Pages cannot configure. Fullscreen and audio are subject to browser restrictions. Desktop use is the intended experience; the layout adapts to phones but GTA play is not optimised for touch.
 - js-dos is third-party software with its own licensing and UI. No upstream branding/licence notices are removed. See [upstream source/licensing](https://github.com/caiiiycuk/js-dos).
 
@@ -56,7 +97,7 @@ Open `http://localhost:8765` (do not open `index.html` directly as a file). `npm
 
 ### Manual acceptance checklist
 
-Implementation checks completed: four automated tests and JavaScript syntax checks passed. In the browser, the no-disc DOS test reached its prompt, pause/resume worked, and an exported smoke-test bundle successfully reopened. End-session returned to the import screen. A narrow viewport showed the stacked layout without horizontal overflow. Actual GTA installation/gameplay and game-save restoration remain untested pending the ISO.
+The original implementation passed four automated tests and JavaScript syntax checks. ChatGPT Work previously tested the no-disc DOS prompt, pause/resume, smoke-test bundle import, end-session and narrow layout. The user has since confirmed GTA itself launches and plays. The new one-click launch tests and first actual shortcut replay have not yet been independently verified.
 
 - Desktop and narrow viewport: readable layout, keyboard navigation and visible focus.
 - No-disc test reaches DOS and prints the smoke message; pause/resume, fullscreen, end and restart work.
