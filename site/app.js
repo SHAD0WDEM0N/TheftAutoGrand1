@@ -1,19 +1,45 @@
-import { validateFile, configuration, quickStartConfig } from './core.js';
+import { validateFile, configuration, quickStartConfig, mobileBundleRisk } from './core.js';
 import { loadPrivateShortcut, savePrivateShortcut, clearPrivateShortcut } from './storage.js';
 const $ = (id) => document.getElementById(id);
 const CDN = 'https://cdn.jsdelivr.net/npm/js-dos@8.5.3/dist/';
 let player = null, ci = null, bundleUrl = null, busy = false, active = false, paused = false, timer;
 let libraryPromise, bundleToolsPromise, savedShortcut = null;
 const idle = $('player').innerHTML;
+const heldKeys = new Map();
+const isTouchDevice = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && matchMedia('(pointer:coarse)').matches);
+function tooLargeForMobile(file) { return mobileBundleRisk(file?.size || 0, isTouchDevice); }
+function mobileNeedsOverride(quick = false) {
+  return tooLargeForMobile(quick ? savedShortcut?.bundle : $('game').files[0]) && !$('override-mobile').checked;
+}
+function updateMobileNotice() {
+  const file = $('game').files[0];
+  const target = file || savedShortcut?.bundle;
+  const large = tooLargeForMobile(target);
+  $('mobile-warning').hidden = !large;
+  if (large) {
+    $('mobile-warning-text').textContent = 'This game file is ' + (target.size / 1048576).toFixed(1) +
+      ' MiB. Your iPhone recording shows Safari crashing at approximately 255 MiB while loading a 751.9 MiB bundle. ' +
+      'For a reliable mobile attempt, make a much smaller local game bundle on your PC. You can override this warning, but Safari may crash again.';
+  }
+  if (!large) $('override-mobile').checked = false;
+}
+function releaseHeldKeys() {
+  for (const { code, button } of heldKeys.values()) {
+    if (ci) ci.sendKeyEvent(code, false);
+    button.classList.remove('pressed');
+  }
+  heldKeys.clear();
+}
+
 function status(message, badge) { $('status').textContent = message; if (badge) $('badge').textContent = badge; }
 function controls() {
   $('game').disabled = busy || active;
-  $('launch').disabled = busy || active || !$('game').files.length;
+  $('launch').disabled = busy || active || !$('game').files.length || mobileNeedsOverride();
   $('demo').disabled = busy || active;
   for (const id of ['pause', 'fullscreen', 'export']) $(id).disabled = busy || !ci;
-  for (const button of document.querySelectorAll('[data-dos-key]')) button.disabled = busy || !ci;
+  for (const button of document.querySelectorAll('[data-dos-key],[data-hold-key]')) button.disabled = busy || !ci;
   $('stop').disabled = busy || !active;
-  $('quick-play').disabled = busy || active || !savedShortcut;
+  $('quick-play').disabled = busy || active || !savedShortcut || mobileNeedsOverride(true);
   $('remember').disabled = busy || !ci || !$('quick-commands').value.trim();
   $('forget').disabled = busy || active || !savedShortcut;
 }
@@ -47,6 +73,7 @@ function bundleTools() {
 }
 async function end() {
   clearTimeout(timer);
+  releaseHeldKeys();
   if (player) await player.stop();
   player = null; ci = null; active = false; paused = false;
   if (bundleUrl) URL.revokeObjectURL(bundleUrl);
@@ -57,6 +84,9 @@ async function launch(demo = false, quick = false) {
   try {
     const file = demo || quick ? null : $('game').files[0];
     const kind = demo ? null : quick ? 'jsdos' : await validateFile(file);
+    if (!demo && mobileNeedsOverride(quick)) {
+      throw new Error('Large game bundle blocked to avoid another mobile Safari crash. Use a smaller private bundle or tick Attempt anyway.');
+    }
     status('Loading emulator code…', 'LOADING'); await loadLibrary();
     const source = {};
     if (quick) {
@@ -75,6 +105,7 @@ async function launch(demo = false, quick = false) {
     player = window.Dos($('player'), {
       ...source, pathPrefix: CDN + 'emulators/', backend: 'dosbox', backendLocked: true,
       theme: 'dark', autoStart: true, countDownStart: 0, autoSave: false,
+      softFullscreen: isTouchDevice,
       fsChanges: { local: false }, renderAspect: '4/3', imageRendering: 'pixelated',
       onEvent(event, value) {
         if (event === 'ci-ready') {
@@ -103,21 +134,42 @@ async function launch(demo = false, quick = false) {
 $('game').addEventListener('change', () => {
   const file = $('game').files[0];
   $('file-info').textContent = file ? `${file.name} · ${(file.size / 1048576).toFixed(1)} MiB` : 'No disc selected';
+  $('override-mobile').checked = false;
+  updateMobileNotice();
   status('File selected locally. Launch to validate and load it.', 'READY TO IMPORT'); controls();
 });
 $('launch').addEventListener('click', () => launch());
 $('demo').addEventListener('click', () => launch(true));
 $('quick-play').addEventListener('click', () => launch(false, true));
 $('quick-commands').addEventListener('input', controls);
+$('override-mobile').addEventListener('change', controls);
 $('pause').addEventListener('click', () => { paused = !paused; player.setPaused(paused); $('pause').textContent = paused ? 'Resume' : 'Pause'; });
 $('fullscreen').addEventListener('click', () => player.setFullScreen(true));
-for (const button of document.querySelectorAll('[data-dos-key]')) {
-  button.addEventListener('click', () => {
-    if (!ci || busy) return;
+// Touch buttons hold the original DOS key down until the finger is released.
+// This is essential for steering/acceleration (a simulated tap does not work).
+for (const button of document.querySelectorAll('[data-hold-key]')) {
+  const release = (event) => {
+    const held = heldKeys.get(event.pointerId);
+    if (!held) return;
+    heldKeys.delete(event.pointerId);
+    button.classList.remove('pressed');
+    if (ci) ci.sendKeyEvent(held.code, false);
+  };
+  button.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    if (!ci || busy || button.disabled) return;
     if (paused) { player.setPaused(false); paused = false; $('pause').textContent = 'Pause'; }
-    ci.simulateKeyPress(Number(button.dataset.dosKey));
-    status('Sent ' + button.textContent.trim() + ' to DOS. These buttons control the selected game menu item.', 'DOS RUNNING');
+    const code = Number(button.dataset.holdKey);
+    if (heldKeys.has(event.pointerId)) return;
+    if (button.setPointerCapture) button.setPointerCapture(event.pointerId);
+    heldKeys.set(event.pointerId, { code, button });
+    button.classList.add('pressed');
+    ci.sendKeyEvent(code, true);
   });
+  for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    button.addEventListener(eventName, release);
+  }
+  button.addEventListener('contextmenu', (event) => event.preventDefault());
 }
 $('stop').addEventListener('click', async () => {
   if (!confirm('End this session? Any changes not exported in a backup will be lost.')) return;
@@ -161,6 +213,7 @@ $('remember').addEventListener('click', async () => {
     await savePrivateShortcut(bundle, commands.trim());
     savedShortcut = { bundle, commands: commands.trim(), savedAt: Date.now() };
     $('quick-info').textContent = 'GTA is saved privately in this browser. Next visit, press Play saved GTA.';
+    updateMobileNotice();
     status('One-click shortcut saved locally! Keep a separate exported backup; browser storage can be cleared.', 'SHORTCUT READY');
   } catch (error) {
     status('Could not save shortcut: ' + error.message + ' Your running game is unchanged.', 'SAVE FAILED');
@@ -176,6 +229,7 @@ $('forget').addEventListener('click', async () => {
     await clearPrivateShortcut();
     savedShortcut = null;
     $('quick-info').textContent = 'No saved game on this browser yet.';
+    updateMobileNotice();
     status('Saved shortcut removed from this browser. Your exported backup files are unchanged.', 'AWAITING INPUT');
   } catch (error) {
     status('Could not remove local copy: ' + error.message, 'STORAGE ERROR');
@@ -186,6 +240,7 @@ loadPrivateShortcut().then(record => {
     savedShortcut = record;
     $('quick-commands').value = record.commands || '';
     $('quick-info').textContent = 'Saved GTA ready on this device. Press Play saved GTA to start.';
+    updateMobileNotice();
   }
   controls();
 }).catch(error => {
