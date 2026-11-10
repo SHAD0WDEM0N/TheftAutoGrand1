@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A personal DOS garage. Bring your own GTA 1 disc and play locally in your browser.">
+  <title>Theft Auto Grand / DOS Garage</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#garage">Skip to player</a>
+  <header><a class="brand" href="./"><span class="mark">TA</span> THEFT AUTO GRAND<span class="edition"> / 01</span></a><a href="https://github.com/SHAD0WDEM0N/TheftAutoGrand1">Source code ↗</a></header>
+  <main>
+    <section class="hero">
+      <div><p class="eyebrow"><span class="dot"></span> PERSONAL DOS GARAGE · EST. 1997</p><h1>OLD STREETS.<br><span>NEW WINDOW.</span></h1><p class="intro">Your disc. Your browser. Back to the beginning.<br>A home for your original GTA DOS edition.</p><a class="button primary" href="#garage">Enter the garage <span>↘</span></a><p class="micro">BRING YOUR OWN GAME · NO GAME DOWNLOADS</p></div>
+      <div class="city" aria-hidden="true"><div class="map"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><b class="car"></b></div><div class="map-label">LIBERTY IS A STATE OF MIND.<br><span>35° / AFTER HOURS / 1997</span></div><div class="stamp">DOS<br>01</div></div>
+    </section>
+    <div class="ticker"><span>LOCAL FILES ONLY</span><span>POWERED BY JS-DOS</span><span>KEYBOARD RECOMMENDED</span><span>NO ACCOUNT REQUIRED</span></div>
+    <section id="garage" class="garage">
+      <div class="section-heading"><div><p class="eyebrow">01 / THE GARAGE</p><h2>Insert your disc.</h2></div><span id="badge" class="badge">AWAITING INPUT</span></div>
+      <div class="workspace">
+        <aside class="panel">
+          <label class="file-label" for="game">01 <strong>Choose game file</strong></label>
+          <p>Import a DOS ISO or a previously exported .jsdos bundle from this device.</p>
+          <input id="game" type="file" accept=".iso,.jsdos">
+          <p id="file-info" class="file-info">No disc selected</p>
+          <details><summary>Boot settings</summary><label for="commands">Commands after mounting (ISO only)</label><textarea id="commands" rows="5" spellcheck="false">d:
+dir</textarea><p>The disc mounts as D:; C: is writable. Locate and run the DOS installer, then its installed executable. Commands run inside DOSBox.</p></details>
+          <button id="launch" class="primary" disabled>Launch local game ↗</button>
+          <button id="demo" class="secondary">Try DOS without a disc</button>
+          <p class="privacy">Your game is read into browser memory, not uploaded by this site. Emulator code loads from jsDelivr. No cloud saves.</p>
+        </aside>
+        <div class="screen-panel"><div class="screen-bar"><span>● DOS TERMINAL</span><span>640 × 480 / 4:3</span></div><div id="player"><div class="idle"><div class="disc">◎</div><h3>Ready when you are.</h3><p>Select your local disc to start.<br>Still downloading? Try the DOS smoke test.</p></div></div><div class="controls"><button id="pause" disabled>Pause</button><button id="fullscreen" disabled>Fullscreen</button><button id="export" disabled>Export backup</button><button id="stop" disabled>End session</button></div></div>
+      </div>
+      <p id="status" role="status" aria-live="polite">Choose a file, or try the DOS smoke test. Nothing is running yet.</p>
+      <p class="session-note">Save in the game, then export a backup before ending your session. Closing or reloading this tab discards the session. Backups may include your disc and installed game; keep them private.</p>
+    </section>
+    <section class="guide" id="guide"><div><p class="eyebrow">02 / FIRST RUN</p><h2>A little setup.<br>A lot of nostalgia.</h2></div><ol><li><strong>Bring the DOS edition.</strong><p>Select your personally owned ISO. Windows-only editions need a different setup. Large images need plenty of free memory.</p></li><li><strong>Install, then hit the streets.</strong><p>At the D: prompt, use <code>dir</code> to find the installer. Install to C: and run the installed DOS executable. Disc layouts vary; there is no guessed auto-launch command.</p></li><li><strong>Keep your progress.</strong><p>Use the game’s save option, then Export backup. Next time, select that .jsdos file. Click the screen for keyboard control; Esc releases a captured pointer.</p></li></ol></section>
+    <details class="faq"><summary>Compatibility & troubleshooting</summary><p>Desktop Chromium or Firefox with a keyboard is recommended. Browser memory can limit CD-sized images; this loader caps imports at 900 MiB. A raw ISO does not include CD audio tracks, so music may be missing. BIN/CUE and Windows installers are not supported by this import flow.</p><p>If loading stalls, end the session and try again. Check your connection or content blocker for jsDelivr. The DOS smoke test checks the emulator, not GTA compatibility. This particular GTA disc has not yet been tested.</p></details>
+  </main>
+  <footer><span>THEFT AUTO GRAND <b>/ PERSONAL ARCHIVE</b></span><p>Unofficial fan-made launcher. No GTA files included. Grand Theft Auto belongs to its respective rights holders.</p></footer>
+</body>
+</html>

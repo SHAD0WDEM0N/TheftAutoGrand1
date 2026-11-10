@@ -1,0 +1,10 @@
+node_modules/
+*.iso
+*.bin
+*.cue
+*.jsdos
+*.zip
+*.exe
+*.com
+*.img
+.DS_Store
