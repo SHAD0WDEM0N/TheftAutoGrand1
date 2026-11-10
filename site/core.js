@@ -1,4 +1,8 @@
 export const MAX_BYTES = 900 * 1024 * 1024;
+export const MOBILE_CAUTION_BYTES = 160 * 1024 * 1024;
+export function mobileBundleRisk(size, isMobile) {
+  return Boolean(isMobile && Number.isFinite(size) && size > MOBILE_CAUTION_BYTES);
+}
 export function fileKind(file) {
   if (!file || file.size === 0) throw new Error('Choose a non-empty ISO or .jsdos file.');
   if (file.size > MAX_BYTES) throw new Error('This file exceeds the 900 MiB browser import limit. Use a smaller prepared .jsdos bundle.');
