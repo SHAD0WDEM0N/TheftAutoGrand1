@@ -23,7 +23,8 @@ test('game window precedes collapsible settings and replaces advertising layout'
 
 test('desktop display tools are wired to supported js-dos commands', () => {
   assert.match(script, /kiosk:\s*true/);
-  assert.match(script, /renderAspect:\s*'4\/3'/);
+  assert.match(script, /renderAspect:\s*\$\('aspect-mode'\)\.value/);
+  assert.match(script, /renderBackend:\s*\$\('render-backend'\)\.value/);
   assert.match(script, /imageRendering:\s*\$\('display-mode'\)\.value/);
   assert.match(script, /player\.setImageRendering\(mode\)/);
   assert.match(script, /ci\.simulateKeyPress\(F11_KEY_CODE\)/);
@@ -39,4 +40,18 @@ test('private game import and save paths are still available', () => {
   assert.match(script, /savePrivateShortcut/);
   assert.match(script, /loadPrivateShortcut/);
   assert.ok(!/src=".*\.(iso|jsdos)"/.test(html));
+});
+
+test('video diagnostics are wired to supported live and start-only js-dos operations', () => {
+  for (const id of ['aspect-mode','render-backend','screenshot']) {
+    assert.ok(html.includes('id="' + id + '"'));
+  }
+  assert.match(script, /player\.setRenderAspect\(aspect\)/);
+  assert.match(script, /ci\.screenshot\(\)/);
+  assert.match(script, /context\.putImageData\(shot, 0, 0\)/);
+  assert.match(script, /canvas\.toBlob\(/);
+  assert.match(script, /'image\/png'/);
+  assert.match(script, /\$\('render-backend'\)\.disabled = busy \|\| active/);
+  assert.match(html, /<option value="4\/3">CRT 4:3<\/option>/);
+  assert.match(html, /<option value="AsIs">Raw pixels<\/option>/);
 });
