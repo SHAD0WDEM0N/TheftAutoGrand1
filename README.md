@@ -2,6 +2,25 @@
 
 A minimal, gameplay-first browser launcher for a personally owned **DOS edition of Grand Theft Auto (1997)**. No game, disc image, installer, artwork, or music is distributed here. Select a file on your device; the application reads it into browser memory rather than uploading it.
 
+## Multiple GTA 1 graphics editions (Windows)
+
+This player can now inspect **your own local** `.jsdos` archive for the original GTA DOS executables and show the options that are actually present. Add File → choose your backup → **Graphics edition** appears beneath the Play GTA button. Nothing is uploaded or changed in your original archive.
+
+| Option | Availability | Behavior |
+| --- | --- | --- |
+| **Original (bundle default)** | Always | Launches the .jsdos using its existing `dosbox.conf` without modifying it. |
+| **Standard · GTA8.EXE** | Only when detected and safely switchable | Rewrites a temporary private archive's startup command to the 8-bit GTA DOS executable. |
+| **High Colour · GTA24.EXE** | Only when detected in the **same directory** as the configured GTA executable and safely switchable | Uses the alternative 24-bit DOS executable. Actual available resolution and performance depend on the GTA copy. |
+| **3dfx Glide (experimental)** | Listed, but disabled pending separate test | The js-dos project advertises WebGL-backed 3dfx emulation, and GTA has a DOS Glide release. However, launching it requires the correct game assets, Glide libraries and DOSBox/DOSBox-X configuration, not merely renaming GTA24.EXE. We will not claim this is ready until explicitly implemented and tested. |
+
+The archive inspection reads only the ZIP directory and the small `.jsdos/dosbox.conf`, not the entire disc. It **does not recursively inspect files inside a `disc.iso` member**. If your imported .jsdos starts via `GTA.BAT` or another indirect script instead of an explicit `GTA8.EXE` or `GTA24.EXE` command, the selector keeps the original profile available but disables speculative automatic switching. This protects a known-working game from an incorrect boot script.
+
+When you select Standard or High Colour, the site constructs a **temporary local ZIP view**: the original large bundle is reused as a Blob, and a replacement DOSBox configuration and central directory are appended. This avoids reading the full game disc into a huge JavaScript ArrayBuffer merely to switch modes. The source `Datafile.jsdos` remains untouched. After verifying a preferred mode in gameplay, export a new private `.jsdos` backup if you'd like that executable to become the default.
+
+**Specific to this project:** The currently confirmed baseline is `GTA8.EXE`, as tested by the owner. The local Windows path to their personal `Datafile.jsdos` does not give GitHub Pages or ChatGPT access to its files; available profiles are discovered when they add that bundle in the browser. High Colour appearing as available only confirms the relevant executable's presence and a patchable startup script, not that gameplay will work.
+
+Sources: <https://www.dosgamesarchive.com/download/grand-theft-auto/> (separate 8-bit, 24-bit and 3dfx DOS versions), <https://js-dos.com/overview.html> (modern js-dos 3dfx support), and <https://js-dos.com/player-api.html> (bundle options). No game files are committed to this repo.
+
 ## Add File → Check → Play GTA
 
 The desktop launcher now has **one Play GTA button**, with **+ Add File** directly beneath it. Opening Windows Explorer and choosing a file does not start the emulator or require a second grey Launch button.
