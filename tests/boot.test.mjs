@@ -30,16 +30,26 @@ test('startup splash stays hidden by default and remains manually dismissible', 
   assert.match(html, /id="boot-splash"[^>]*hidden/);
   assert.match(html, /id="show-dos"/);
   assert.match(css, /\.boot-splash\s*\{/);
-  assert.match(app, /watchGtaFrames\(ci\); watchGtaStartup\(\)/);
+  assert.match(app, /watchGtaFrames\(ci\); watchGtaScreenshots\(ci\); watchGtaStartup\(\)/);
   assert.match(app, /await ci\.getRunningProgram\(\)/);
   assert.match(app, /isGtaProgram\(program\)/);
   assert.match(app, /bootSplashTimer = setTimeout\(/);
-  assert.match(app, /}, 12000\)/);
+  assert.match(app, /}, 18000\)/);
   assert.match(app, /\$\('show-dos'\)\.addEventListener\('click'/);
   assert.match(app, /\$\('show-game'\)\.addEventListener\('click'/);
   assert.match(app, /watchGtaFrames\(ci\)/);
   assert.ok(!app.includes("hideBootSplash();\n      status('GTA startup was not detected."));
   assert.match(app, /async function end\(\) \{\s*hideBootSplash\(\)/);
+});
+
+test('boot readiness uses screenshots and guarded 18-second GTA-executable fallback', () => {
+  assert.match(app, /const shot = await commandInterface\.screenshot\(\)/);
+  assert.match(app, /looksLikeGameFrame\(null, shot\.data, shot\.width, shot\.height\)/);
+  assert.match(app, /bootScreenshotMatches >= 2/);
+  assert.match(app, /bootGtaDetected = true/);
+  assert.match(app, /if \(bootGtaDetected\) \{/);
+  assert.match(app, /clearTimeout\(bootScreenshotTimer\)/);
+  assert.match(app, /GTA may already be running\. Choose Show game/);
 });
 
 test('unknown private jsdos launchers stay masked; raw installer ISOs remain visible', () => {
