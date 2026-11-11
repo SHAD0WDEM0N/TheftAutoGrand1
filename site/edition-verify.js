@@ -22,8 +22,8 @@ export async function verifyEditionBundle(file, edition, inspection) {
   const expected = edition === 'london69' ? 'london.bat' : 'london61.bat';
   // The DOSBox config must execute the appropriate batch script. A package
   // with files but a GTA8.EXE startup command would launch the wrong game.
-  const autoexec = /^\[autoexec\][^\r\n]*\r?\n([\s\S]*?)(?=^\[[^\r\n]+\]|\s*$)/im.exec(inspection.config);
-  const commands = autoexec?.[1] || inspection.config.split(/\[autoexec\]/i)[1] || '';
+  const section = inspection.config.split(/^\[autoexec\][ \t]*$/im)[1] || '';
+  const commands = section.split(/^\[[^\r\n]+\][ \t]*$/m)[0];
   const launch = commands.split(/\r?\n/).some(line =>
     !/^\s*(rem\b|::|#)/i.test(line) &&
     new RegExp('(?:^|[\\s\\\\/])(?:call\\s+)?'+expected.replace('.','\\.')+'(?:\\s|$)','i').test(line.trim())
