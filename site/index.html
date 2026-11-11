@@ -25,6 +25,14 @@
     <section class="game-window" aria-label="Game player">
       <div id="stage-frame" class="stage-frame">
         <div id="player"><div class="idle" aria-hidden="true"></div></div>
+        <div id="boot-splash" class="boot-splash" hidden>
+          <div class="boot-content">
+            <span class="boot-spinner" aria-hidden="true"></span>
+            <strong>Starting GTA…</strong>
+            <p id="boot-message" role="status" aria-live="polite">Preparing the DOS game in the background.</p>
+            <button id="show-dos" type="button" class="boot-show-dos">Show DOS / troubleshoot</button>
+          </div>
+        </div>
         <div id="launch-overlay" class="launch-overlay">
           <div class="start-menu">
             <div class="game-mark" aria-hidden="true">DOS <span>1997</span></div>
