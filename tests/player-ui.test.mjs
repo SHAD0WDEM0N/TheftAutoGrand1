@@ -25,8 +25,12 @@ test('desktop display tools are wired to supported js-dos commands', () => {
   assert.match(script, /kiosk:\s*true/);
   assert.match(script, /renderAspect:\s*\$\('aspect-mode'\)\.value/);
   assert.match(script, /renderBackend:\s*\$\('render-backend'\)\.value/);
-  assert.match(script, /imageRendering:\s*\$\('display-mode'\)\.value/);
-  assert.match(script, /player\.setImageRendering\(mode\)/);
+  assert.match(script, /imageRendering:\s*'pixelated'/);
+  assert.ok(!html.includes('<option value="smooth">'));
+  assert.ok(!html.includes('id="quick-play"'));
+  assert.ok(!html.includes('id="launch"'));
+  assert.ok(!html.includes('id="pick-file"'));
+  assert.match(script, /const info = await inspectGameFile\(file\)/);
   assert.match(script, /ci\.simulateKeyPress\(F11_KEY_CODE\)/);
   assert.match(script, /F11_KEY_CODE\s*=\s*300/);
   assert.match(script, /onFrameSize\(\(width, height\)/);
@@ -34,7 +38,7 @@ test('desktop display tools are wired to supported js-dos commands', () => {
 });
 
 test('private game import and save paths are still available', () => {
-  for (const id of ['game', 'launch', 'quick-play', 'quick-commands', 'remember', 'export', 'stop']) {
+  for (const id of ['game', 'add-file', 'play', 'source-info', 'source-detail', 'quick-commands', 'remember', 'export', 'stop']) {
     assert.ok(html.includes('id="' + id + '"'));
   }
   assert.match(script, /savePrivateShortcut/);
@@ -54,4 +58,30 @@ test('video diagnostics are wired to supported live and start-only js-dos operat
   assert.match(script, /\$\('render-backend'\)\.disabled = busy \|\| active/);
   assert.match(html, /<option value="4\/3">CRT 4:3<\/option>/);
   assert.match(html, /<option value="AsIs">Raw pixels<\/option>/);
+});
+
+test('single Play CTA is disabled until a local file has passed preflight', () => {
+  assert.match(html, /<button id="play"[^>]*disabled>▶ Play GTA<\/button>/);
+  assert.match(html, /<button id="add-file"[^>]*>\+ Add File<\/button>/);
+  assert.match(script, /\$\('play'\)\.disabled = busy \|\| active \|\| checkingSource \|\| !playableSource\(\)/);
+  assert.match(script, /const info = await inspectGameFile\(file\)/);
+  assert.match(script, /await loadLibrary\(\)/);
+  assert.match(script, /showFileState\('File check failed:/);
+  assert.ok(!html.includes('Launch selected file'));
+});
+
+test('readability and colourful accents do not introduce advertising sections', () => {
+  assert.match(css, /--accent-orange:\s*#ff924d/);
+  assert.match(css, /--accent-teal:\s*#53c8be/);
+  assert.match(css, /--accent-gold:\s*#efcb7d/);
+  assert.ok(!html.includes('Smooth scaling'));
+});
+
+test('F11 screen-mode control reports running DOS executable rather than promising a resolution', () => {
+  assert.ok(html.includes('id="inspect-program"'));
+  assert.ok(html.includes('id="program-info"'));
+  assert.match(script, /ci\.getRunningProgram\(\)/);
+  assert.match(script, /ci\.simulateKeyPress\(F11_KEY_CODE\)/);
+  assert.ok(html.includes('Screen mode (F11)'));
+  assert.ok(!html.includes('GTA display menu (F11)'));
 });

@@ -2,6 +2,29 @@
 
 A minimal, gameplay-first browser launcher for a personally owned **DOS edition of Grand Theft Auto (1997)**. No game, disc image, installer, artwork, or music is distributed here. Select a file on your device; the application reads it into browser memory rather than uploading it.
 
+## Add File → Check → Play GTA
+
+The desktop launcher now has **one Play GTA button**, with **+ Add File** directly beneath it. Opening Windows Explorer and choosing a file does not start the emulator or require a second grey Launch button.
+
+After a file is selected, the page checks it **locally**:
+- For an `.iso`, it reads the ISO-9660 primary volume descriptor and root-directory structure.
+- For a `.jsdos`, it reads the ZIP central directory and checks for the required `.jsdos/dosbox.conf` plus at least one game or disc file.
+- It then fetches/initializes the js-dos frontend scripts so Play GTA is only enabled after the initial file checks and required player code are ready.
+
+The checks read small slices of the selected file, not an entire CD-sized image. They check **archive and filesystem structure**, not executable integrity, GTA licensing, complete archive CRCs, game identity, or actual DOSBox gameplay compatibility. The only way to confirm that a particular copy boots and runs correctly is to press Play and test it. A verified ISO may still require DOS installation and manual boot commands. When a browser-local shortcut exists, Play GTA reopens it after its bundle passes the same structural check. No file is uploaded.
+
+**Graphics:** Smooth scaling has been removed from the UI because it blurred GTA's sprites badly. Sharp pixel-art rendering is now always used, with the native F11 options, CRT aspect comparison and WebGL/Canvas fallback still available. These don't create higher-resolution game assets.
+
+The restrained palette now uses orange for Play, teal for file checks and gold for advanced controls rather than any landing-page promotional sections.
+
+## Original DOS GTA screen modes: confirmed details
+
+**F11 is documented** as a screen-mode key in the original GTA DOS documentation, but it does not guarantee an options menu in every game state or executable. In particular, some game discs ship separate `GTADOS/GTA8.EXE` (8-bit/VGA) and `GTADOS/GTA24.EXE` (24-bit DOS) launch targets. The 24-bit variant is the first to investigate for higher-colour/higher-resolution output. The latest launcher adds **Check GTA version** to query the running DOS executable using js-dos's `getRunningProgram()`, and displays the current framebuffer size next to it. It still does not automatically replace the executable or force an unverified high-resolution mode.
+
+A GTA settings file called `GTADATA/PLAYER_A.DAT` holds an option corresponding to display mode. Retail DOS and Classics/Steam files have different structures and should **not** be patched by guessing values. We should first establish the exact executable, version and best working resolution, then save/export a private `.jsdos` archive containing the confirmed settings. A new download of the game's original ISO is not automatically required: a new configured copy of the existing browser backup should be sufficient if the game data and writable settings are present. Keep your old backup.
+
+Original DOS versions do **not** gain native 1080p by changing browser canvas size or DOSBox's `fullresolution` parameter. If F11 does nothing, try the original game during actual gameplay and inspect the `Check GTA version` output rather than automatically forcing unsupported settings. References: [DOS game controls](https://gta.fandom.com/wiki/Controls_for_GTA_%281997_game%29), [GTA DOS executable variants](https://www.abandonware-france.org/ltf_abandon/ltf_jeu.php?id=803), and [GTA settings file format](https://misc.daniel-marschall.de/spiele/gta1/savegame.html).
+
 ## Windows desktop player and display modes
 
 The default screen now shows the game first. There is **no promotional hero, ticker, side advertisement, or permanently open setup panel**. The `Game setup & advanced tools` drawer stays collapsed unless you need to import a personal file, edit DOS launch commands, or save/update your private one-click shortcut. No Rockstar game data is hosted by this site.
@@ -10,11 +33,11 @@ Desktop graphics diagnostics (added in the next quality pass):
 - **Shape — CRT 4:3 / Raw pixels**: switch between js-dos's 4:3 CRT-corrected presentation and native uncorrected source-pixel aspect. DOS 320×200 VGA output can have non-square pixels; 4:3 remains the recommended default. The comparison changes only presentation, not the game video mode.
 - **Browser graphics renderer** under advanced settings: **WebGL** (default) or **Canvas** (fallback). Choose before launching. The renderer cannot be changed once an emulator session is running; end and relaunch to compare. This is intended for compatibility testing, not a guaranteed speed/quality improvement.
 - **Save screenshot**: export an unmodified native-frame PNG via the js-dos Command Interface. The file is generated locally and is not uploaded to the public repository or a backend. Share it in chat when diagnosing a visual issue. A screenshot size such as 640×480 describes the emulator's output; it is not proof of 1080p native game rendering.
-- **GTA display menu (F11)** opens the original DOS game's screen-display options, rather than forcing a modern display mode. Certain choices can fail depending on the edition or emulation. Keep a backup before experimenting. <https://www.gamesdatabase.org/Media/SYSTEM/Microsoft_DOS/manual/Formated/Grand_Theft_Auto.pdf>
+- **Screen mode (F11)** sends the original GTA DOS screen-mode key during gameplay; the exact behavior is edition-dependent, and the version can be checked with the new running-program diagnostic. Certain choices can fail depending on the edition or emulation. Keep a backup before experimenting. <https://www.gamesdatabase.org/Media/SYSTEM/Microsoft_DOS/manual/Formated/Grand_Theft_Auto.pdf>
 
 Desktop controls:
-- **Choose game file** opens the local file picker; **Launch selected file** starts the chosen ISO or .jsdos bundle. **Play saved GTA** works after you have explicitly created a local one-click shortcut on that browser.
-- **Picture: Crisp pixels / Smooth scaling** changes the js-dos player image rendering live. This setting is optional and remembered locally (only the display choice is stored in localStorage).
+- **+ Add File** opens the local file picker. After the file structure and js-dos frontend load successfully, **Play GTA** becomes active. If you have a private saved shortcut, it can become ready without selecting another file.
+- **Picture: Sharp pixels** stays enabled to avoid the excessive blur from smooth interpolation. Aspect and backend preferences can still be remembered locally.
 - **GTA display menu (F11)** sends F11 into the running DOS game. This opens the game's own video mode selection (when supported by the edition). The `Native` readout displays the current emulator framebuffer dimensions as reported by js-dos.
 - **Fullscreen** uses js-dos fullscreen, while maintaining **4:3** proportions. Black bars on a widescreen monitor are expected. Avoid stretching the original graphics to 16:9.
 - **Pause**, **End game**, and **Export save / backup** are always outside the hidden emulator UI. The embedded js-dos player runs in kiosk mode; its own sidebar is hidden to make gameplay the main surface.

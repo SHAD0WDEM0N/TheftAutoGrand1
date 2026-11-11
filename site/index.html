@@ -27,11 +27,15 @@
         <div id="player"><div class="idle" aria-hidden="true"></div></div>
         <div id="launch-overlay" class="launch-overlay">
           <div class="start-menu">
-            <h1>Grand Theft Auto <span>1997 · DOS</span></h1>
-            <button id="quick-play" type="button" class="play-button" disabled>Play saved GTA</button>
-            <button id="pick-file" type="button" class="load-button">Choose game file</button>
-            <button id="launch" type="button" class="load-button" disabled>Launch selected file</button>
-            <p id="quick-info">No saved game in this browser yet.</p>
+            <div class="game-mark" aria-hidden="true">DOS <span>1997</span></div>
+            <h1>Grand Theft Auto</h1>
+            <button id="play" type="button" class="play-button" disabled>▶ Play GTA</button>
+            <button id="add-file" type="button" class="load-button">+ Add File</button>
+            <div id="source-info" class="source-info" data-state="empty" role="status" aria-live="polite">
+              <span class="source-dot" aria-hidden="true"></span>
+              <span id="source-detail">Add your own ISO or .jsdos file to begin.</span>
+            </div>
+            <p id="quick-info" class="privacy-note">Your game stays on your PC. The site doesn't upload it.</p>
           </div>
         </div>
       </div>
@@ -41,8 +45,7 @@
       <div class="graphics-controls">
         <label for="display-mode">Picture</label>
         <select id="display-mode" aria-label="Picture quality">
-          <option value="pixelated">Crisp pixels</option>
-          <option value="smooth">Smooth scaling</option>
+          <option value="pixelated">Sharp pixels (recommended)</option>
         </select>
         <label for="aspect-mode">Shape</label>
         <select id="aspect-mode" aria-label="Screen aspect ratio">
@@ -50,7 +53,9 @@
           <option value="AsIs">Raw pixels</option>
         </select>
         <span id="video-mode" class="video-mode" aria-live="polite">Native: —</span>
-        <button id="native-resolution" type="button" title="Open the game's own video-mode options via F11" disabled>GTA display menu (F11)</button>
+        <span id="program-info" class="video-mode" aria-live="polite">Program: —</span>
+        <button id="inspect-program" type="button" title="Identify the running DOS executable before trying higher-resolution modes" disabled>Check GTA version</button>
+        <button id="native-resolution" type="button" title="Send GTA's documented screen-mode key during active gameplay; availability depends on the executable" disabled>Screen mode (F11)</button>
       </div>
       <div class="player-actions">
         <button id="screenshot" type="button" disabled>Save screenshot</button>
@@ -69,9 +74,9 @@
       <div class="tools-grid">
         <section class="tool-group">
           <h2>Game files</h2>
-          <p>Your own ISO or exported .jsdos backup. Files are processed on your device.</p>
-          <label class="field-label" for="game">Local file</label>
-          <input id="game" type="file" accept=".iso,.jsdos">
+          <p>Add a file from the game screen. It will be checked locally before Play GTA becomes available.</p>
+          <label class="visually-hidden" for="game">Choose your DOS game</label>
+          <input id="game" class="visually-hidden" type="file" accept=".iso,.jsdos">
           <p id="file-info" class="filename">No game file selected</p>
           <div id="mobile-warning" class="notice" hidden>
             <strong>Large file warning</strong>
@@ -105,9 +110,12 @@ dir</textarea>
             <option value="canvas">Canvas (compatibility fallback)</option>
           </select>
           <p class="hint">Choose before launching GTA; switching requires ending and restarting the game.</p>
-          <p><strong>GTA display menu (F11)</strong> opens the game's original video-mode options. Modes depend on the DOS edition and may not all work in the emulator.</p>
-          <p><strong>Crisp pixels</strong> and <strong>Smooth scaling</strong> only change how the browser enlarges the picture. They do not create new texture detail.</p>
+          <p><strong>Check GTA version</strong> reports the running DOS executable. Retail GTA may include GTA8.EXE and GTA24.EXE; higher-resolution modes are more likely to be available in the 24-bit version.</p>
+          <p><strong>Screen mode (F11)</strong> sends GTA's documented video-mode key while the game runs. It may do nothing in certain game states or editions, and does not itself force 1080p or the maximum mode.</p>
+          <p>GTA saves its resolution preference in GTADATA/PLAYER_A.DAT. To keep a confirmed setting, export an updated private .jsdos backup after changing it. Never edit the original game's save data without a backup.</p>
+          <p><strong>Sharp pixels</strong> stays enabled to avoid the blurry smoothing effect. The game remains limited by GTA's original DOS graphics resolution.</p>
           <p><strong>Shape: CRT 4:3</strong> corrects non-square VGA pixels. <strong>Raw pixels</strong> shows the uncorrected source for comparison. Neither changes internal game resolution.</p>
+          <p><strong>Verify before Play</strong> checks the ISO or .jsdos archive structure and prepares the emulator code; it does not run GTA or precompile every graphics operation. Full gameplay compatibility is only confirmed when you start the game.</p>
           <p><strong>Save screenshot</strong> captures the game's native framebuffer as a local PNG for troubleshooting. A fullscreen monitor does not increase its native pixel dimensions.</p>
           <p>The player maintains a 4:3 game viewport, with black bars where needed rather than stretching to 16:9.</p>
           <p class="hint">Desktop Chrome or Edge is recommended. Mobile development is paused for now.</p>
