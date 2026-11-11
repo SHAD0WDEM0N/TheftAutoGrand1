@@ -78,7 +78,7 @@ test('changing London edition reconstructs the executable selector before Play',
   assert.match(app, /game === 'london61'/);
   assert.match(app, /updateEditionOptions\(chosenGameSource\(\)\)/);
   assert.match(html, /app\.js\?v=save-manager-uploadfix-20261111/);
-  assert.match(html, /style\.css\?v=save-manager-phase1-20261111/);
+  assert.match(html, /style\.css\?v=800x600-fourthree-20261111/);
 });
 
 

@@ -157,3 +157,13 @@ test('forgetting a saved shortcut does not reference an undefined error', () => 
   assert.ok(tryEnd > 0);
   assert.ok(!section.slice(0,tryEnd).includes("error.message"));
 });
+
+
+test('all editions use 800x600 output framing without forcing unsupported DOS modes', () => {
+  assert.match(css, /#stage-frame:not\(:fullscreen\)\s*\{[\s\S]*?width:\s*min\(100%,\s*800px\)/);
+  assert.match(css, /aspect-ratio:\s*800\s*\/\s*600/);
+  assert.match(css, /#stage-frame:fullscreen #player,[\s\S]*?aspect-ratio:\s*800\s*\/\s*600/);
+  assert.match(script, /renderAspect:\s*'4\/3'/);
+  assert.match(script, /backend:\s*'dosbox', backendLocked:\s*true/);
+  assert.ok(!script.includes('800x600x32'), 'do not force DOS video mode unavailable in some game executables');
+});
