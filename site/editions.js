@@ -52,8 +52,8 @@ export async function inspectBundleEditions(file) {
   // Switching is safe only when the configured startup program is explicit and the alternative
   // executable lives alongside it. A GTA.BAT or disc-only image may use a different layout.
   const available = ['auto'];
-  if (sourcePath && gta8.some(e => nameOf(e.name) === sourcePath + 'GTA8.EXE')) available.push('gta8');
-  if (sourcePath && gta24.some(e => nameOf(e.name) === sourcePath + 'GTA24.EXE')) available.push('gta24');
+  if (sourcePath !== null && gta8.some(e => nameOf(e.name) === sourcePath + 'GTA8.EXE')) available.push('gta8');
+  if (sourcePath !== null && gta24.some(e => nameOf(e.name) === sourcePath + 'GTA24.EXE')) available.push('gta24');
   return {
     available, detected, boot, config,
     note: boot === 'unknown'
