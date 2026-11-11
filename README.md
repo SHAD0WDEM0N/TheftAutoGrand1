@@ -1,6 +1,19 @@
 # Theft Auto Grand · DOS Garage
 
-A static, retro-themed browser launcher for a personally owned **DOS edition of Grand Theft Auto (1997)**. No game, disc image, installer, artwork, or music is distributed here. Select a file on your device; the application reads it into browser memory rather than uploading it.
+A minimal, gameplay-first browser launcher for a personally owned **DOS edition of Grand Theft Auto (1997)**. No game, disc image, installer, artwork, or music is distributed here. Select a file on your device; the application reads it into browser memory rather than uploading it.
+
+## Windows desktop player and display modes
+
+The default screen now shows the game first. There is **no promotional hero, ticker, side advertisement, or permanently open setup panel**. The `Game setup & advanced tools` drawer stays collapsed unless you need to import a personal file, edit DOS launch commands, or save/update your private one-click shortcut. No Rockstar game data is hosted by this site.
+
+Desktop controls:
+- **Choose game file** opens the local file picker; **Launch selected file** starts the chosen ISO or .jsdos bundle. **Play saved GTA** works after you have explicitly created a local one-click shortcut on that browser.
+- **Picture: Crisp pixels / Smooth scaling** changes the js-dos player image rendering live. This setting is optional and remembered locally (only the display choice is stored in localStorage).
+- **Game resolution (F11)** sends F11 into the running DOS game. The original GTA PC version supports cycling internal video modes with F11. The `Native` readout displays the current emulator framebuffer dimensions as reported by js-dos.
+- **Fullscreen** uses js-dos fullscreen, while maintaining **4:3** proportions. Black bars on a widescreen monitor are expected. Avoid stretching the original graphics to 16:9.
+- **Pause**, **End game**, and **Export save / backup** are always outside the hidden emulator UI. The embedded js-dos player runs in kiosk mode; its own sidebar is hidden to make gameplay the main surface.
+
+**Important:** Scaling a 320×200 or 640×480 frame to 1080p/1440p does not increase original art resolution. F11's available modes depend on GTA's DOS edition. Smooth filtering may look softer rather than sharper. No arbitrary 1080p DOS-mode patch, widescreen game modification or new high-resolution textures are included. Validate F11 and all gameplay controls on the actual installed game before calling it a game-quality improvement.
 
 ## Publish on GitHub Pages
 
