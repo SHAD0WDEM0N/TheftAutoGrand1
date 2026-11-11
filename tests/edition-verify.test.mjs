@@ -19,6 +19,7 @@ function zipBundle(names) {
     const cv = new DataView(central.buffer);
     cv.setUint32(0,0x02014b50,true);
     cv.setUint16(4,20,true);
+    cv.setUint16(28,bytes.length,true);
     cv.setUint32(42,offset,true);
     central.set(bytes,46);
     directory.push(central);
