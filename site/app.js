@@ -10,6 +10,7 @@ let player = null, ci = null, bundleUrl = null, busy = false, active = false, pa
 let libraryPromise, bundleToolsPromise, savedShortcut = null;
 let bootSplashTimer = null, bootPollTimer = null, bootSplashActive = false, bootSplashGeneration = 0;
 let bootLastFrameCheck = 0, bootGraphicFrames = 0, bootStartedAt = 0;
+let bootScreenshotTimer = null, bootScreenshotMatches = 0, bootGtaDetected = false;
 let scaleImage = null, scaleWidth = 0, scaleHeight = 0, scaleLastPaint = 0, scaleDisabled = false;
 function clearScale2x() {
   scaleImage = null; scaleWidth = 0; scaleHeight = 0;
@@ -160,6 +161,9 @@ function hideBootSplash() {
   bootStartedAt = 0;
   clearTimeout(bootSplashTimer);
   clearTimeout(bootPollTimer);
+  clearTimeout(bootScreenshotTimer);
+  bootScreenshotMatches = 0;
+  bootGtaDetected = false;
   bootSplashActive = false;
   $('boot-splash').hidden = true;
   $('skip-video-probe').disabled = true;
@@ -173,16 +177,52 @@ function showBootSplash() {
   $('boot-message').textContent = 'The game is loading behind the scenes. DOS startup stays hidden.';
   $('boot-splash').hidden = false;
   const generation = bootSplashGeneration;
-  // Do not automatically reveal the DOS text after a fixed timeout. Keep the
-  // troubleshooting buttons visible and explain how to reveal either view.
+  // Don't leave a confirmed GTA executable hidden indefinitely when a dark
+  // title screen defeats colour-based frame detection. This is a delayed
+  // fallback, never a claim that GTA is known to have reached its menu.
   bootSplashTimer = setTimeout(() => {
-    if (bootSplashActive && generation === bootSplashGeneration) {
-      $('boot-message').textContent = 'Startup is taking longer than expected. Try Show game, or Show DOS if the game needs input.';
-      status('GTA has not been confirmed visually. Choose Show game or Show DOS to investigate.', 'CHECK STARTUP');
+    if (!bootSplashActive || generation !== bootSplashGeneration) return;
+    if (bootGtaDetected) {
+      hideBootSplash();
+      status('GTA executable has been running. Revealed game after startup grace period.', 'GTA VISIBLE');
+    } else {
+      $('boot-message').textContent = 'GTA may already be running. Choose Show game to check, or Show DOS to troubleshoot.';
+      status('Startup could not be confirmed. Show game reveals the current picture.', 'CHECK GAME');
     }
-  }, 12000);
+  }, 18000);
 }
 
+
+function watchGtaScreenshots(commandInterface) {
+  if (!bootSplashActive) return;
+  const generation = bootSplashGeneration;
+  const check = async () => {
+    if (!bootSplashActive || generation !== bootSplashGeneration) return;
+    try {
+      // A framebuffer screenshot can remain available even when a backend's
+      // onFrame callback does not deliver pixels in the expected format.
+      const shot = await commandInterface.screenshot();
+      if (!bootSplashActive || generation !== bootSplashGeneration) return;
+      if (shot && looksLikeGameFrame(null, shot.data, shot.width, shot.height)) {
+        bootScreenshotMatches++;
+        if (bootScreenshotMatches >= 2) {
+          hideBootSplash();
+          status('GTA graphics confirmed using emulator screenshot. Opening game.', 'GAME VISIBLE');
+          return;
+        }
+      } else {
+        bootScreenshotMatches = 0;
+      }
+    } catch {
+      // A screenshot may not be available during DOS video-mode transitions.
+      bootScreenshotMatches = 0;
+    }
+    if (bootSplashActive && generation === bootSplashGeneration) {
+      bootScreenshotTimer = setTimeout(check, 1800);
+    }
+  };
+  bootScreenshotTimer = setTimeout(check, 1000);
+}
 
 function watchGtaFrames(commandInterface) {
   if (!bootSplashActive) return;
@@ -215,6 +255,7 @@ function watchGtaStartup() {
       const program = await ci.getRunningProgram();
       if (!bootSplashActive || generation !== bootSplashGeneration) return;
       if (isGtaProgram(program)) {
+        bootGtaDetected = true;
         // The executable can run while SciTech is still displaying a DOS prompt.
         // Do not reveal DOS based on program detection: wait for graphical frames,
         // or let the user choose Show game / Show DOS.
@@ -326,7 +367,7 @@ async function launch(demo = false) {
           ci = value; clearTimeout(timer); controls();
           $('skip-video-probe').disabled = !bootSplashActive;
           ci.events().onFrame((rgb, rgba) => processEnhancedFrame(rgb, rgba));
-          if (bootSplashActive) { watchGtaFrames(ci); watchGtaStartup(); }
+          if (bootSplashActive) { watchGtaFrames(ci); watchGtaScreenshots(ci); watchGtaStartup(); }
           ci.events().onFrameSize((width, height) => { if (width > 0 && height > 0) $('video-mode').textContent = 'Native: ' + width + '×' + height; });
           status(bootSplashActive
             ? 'Launching GTA in the background…'
