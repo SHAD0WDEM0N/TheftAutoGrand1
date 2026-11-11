@@ -140,12 +140,12 @@ function updateEditionOptions(source) {
   // Rebuild the real <option> nodes for the chosen game. Keeping the old
   // GTA8/GTA24 option nodes led to stale labels on some browser sessions.
   const modes = game === 'london69'
-    ? [['auto', 'Default · London 1969 (working 8-bit)'],
-       ['gta8', '8-bit · GTA8_UK.EXE (tested)'],
-       ['gta24', '24-bit · GTA24_UK.EXE (experimental)']]
+    ? [['auto', 'Default · London 1969'],
+       ['gta8', '8-bit · GTA8_UK.EXE'],
+       ['gta24', '24-bit · GTA24_UK.EXE']]
     : game === 'london61'
       ? [['auto', 'Default · London 1961'],
-         ['gta24', '24-bit · GTA24_61.EXE (experimental)']]
+         ['gta24', '24-bit · GTA24_61.EXE']]
       : [['auto', 'Original (bundle default)'],
          ['gta8', 'Standard · GTA8.EXE'],
          ['gta24', 'High Colour · GTA24.EXE']];
