@@ -164,11 +164,11 @@ const heldKeys = new Map();
 const isTouchDevice = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && matchMedia('(pointer:coarse)').matches);
 function tooLargeForMobile(file) { return mobileBundleRisk(file?.size || 0, isTouchDevice); }
 function mobileNeedsOverride(quick = false) {
-  const file = quick ? savedShortcut?.bundle : (selectedSource?.file || $('game').files[0]);
+  const file = chosenGameSource()?.file || (quick ? savedShortcut?.bundle : (selectedSource?.file || $('game').files[0]));
   return tooLargeForMobile(file) && !$('override-mobile').checked;
 }
 function updateMobileNotice() {
-  const target = playableSource()?.file || $('game').files[0] || (!fileWasChosen && savedShortcut?.bundle);
+  const target = chosenGameSource()?.file || $('game').files[0] || (!fileWasChosen && savedShortcut?.bundle);
   const large = tooLargeForMobile(target);
   $('mobile-warning').hidden = !large;
   if (large) {
@@ -202,7 +202,7 @@ function controls() {
   $('game-edition').disabled = busy || active || checkingSource || londonChecking;
   for (const id of ['london69-file', 'london61-file']) $(id).disabled = busy || active || londonChecking;
   $('play').disabled = busy || active || checkingSource || londonChecking || !chosenGameSource()
-    || mobileNeedsOverride(playableSource()?.from === 'saved');
+    || mobileNeedsOverride(chosenGameSource()?.from === 'saved');
   $('demo').disabled = busy || active;
   for (const id of ['pause', 'fullscreen', 'export']) $(id).disabled = busy || !ci;
   for (const button of document.querySelectorAll('[data-dos-key],[data-hold-key]')) button.disabled = busy || !ci;
@@ -525,6 +525,7 @@ async function checkAddedFile(file) {
     }
     selectedSource = { file, kind: info.kind, from: 'file', editions };
     updateEditionOptions(selectedSource);
+    updateGameEditions();
     showFileState('Ready to start: ' + file.name + ' (' + info.kind.toUpperCase() + '). Game launch not yet tested.', 'ready');
     status(info.description + ' Press Play GTA to start.', 'FILE READY');
     updateMobileNotice();
@@ -539,6 +540,45 @@ async function checkAddedFile(file) {
 $('game').addEventListener('change', () => {
   const file = $('game').files[0];
   if (file) void checkAddedFile(file);
+});
+async function checkLondonBundle(edition, file) {
+  const label = edition === 'london69' ? 'London 1969' : 'London 1961';
+  const statusId = edition === 'london69' ? 'london69-status' : 'london61-status';
+  if (!file) {
+    londonSources[edition] = null;
+    $(statusId).textContent = 'No ' + label + ' bundle added.';
+    updateGameEditions(); controls();
+    return;
+  }
+  londonChecking = true;
+  londonSources[edition] = null;
+  $(statusId).textContent = 'Checking ' + file.name + ' locally…';
+  updateGameEditions(); controls();
+  try {
+    if (!file.name.toLowerCase().endsWith('.jsdos')) throw new Error('Use a prepared DOS .jsdos bundle, not a Windows installer or raw disc image.');
+    const inspected = await inspectGameFile(file);
+    if (inspected.kind !== 'jsdos') throw new Error('This is not a valid DOS .jsdos game bundle.');
+    const editions = await inspectBundleEditions(file);
+    // This is structure validation, not proof that all London expansion
+    // dependencies are present or that its executable will boot successfully.
+    londonSources[edition] = { file, kind:'jsdos', from:'london', editions };
+    $(statusId).textContent = 'Ready to test: ' + file.name + ' (' + (file.size/1048576).toFixed(1) + ' MiB). Bundle structure checked; London game boot not verified.';
+    status(label + ' bundle checked locally. Select the edition before Play.', 'LONDON FILE READY');
+  } catch (error) {
+    $(statusId).textContent = 'Unable to use ' + label + ': ' + error.message;
+    status(label + ' bundle validation failed: ' + error.message, 'INVALID FILE');
+  } finally {
+    londonChecking = false;
+    updateGameEditions(); updateMobileNotice(); controls();
+  }
+}
+for (const [id, edition] of [['london69-file','london69'],['london61-file','london61']]) {
+  $(id).addEventListener('change', () => { void checkLondonBundle(edition, $(id).files[0]); });
+}
+$('game-edition').addEventListener('change', () => {
+  updateGameEditions();
+  updateMobileNotice();
+  controls();
 });
 $('add-file').addEventListener('click', () => $('game').click());
 function handleGraphicsChange(value) {
@@ -581,6 +621,7 @@ $('install-local').addEventListener('click', async () => {
     savedEditionInfo = source.editions;
     savedSourceReady = true;
     fileWasChosen = false;
+    updateGameEditions();
     selectedSource = null;
     $('game').value = '';
     $('file-info').textContent = 'Game saved in this browser. Keep your original Datafile.jsdos as backup.';
@@ -782,6 +823,7 @@ $('forget').addEventListener('click', async () => {
     savedShortcut = null;
     savedSourceReady = false;
     savedEditionInfo = null;
+    updateGameEditions();
     if (!fileWasChosen) updateEditionOptions(null);
     $('quick-info').textContent = 'No saved game stored in this browser.';
     if (!fileWasChosen) showFileState('Add your own ISO or .jsdos file to begin.', 'empty');
@@ -809,6 +851,7 @@ loadPrivateShortcut().then(async record => {
     $('quick-info').textContent = 'Private saved game found on this browser.';
     if (!fileWasChosen) {
       updateEditionOptions({kind:'jsdos', editions:savedEditionInfo});
+      updateGameEditions();
       showFileState('Saved game ready. Press Play GTA.', 'ready');
       status('Saved game bundle checked. Game execution is not yet verified for this session.', 'FILE READY');
       updateMobileNotice();
