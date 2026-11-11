@@ -26,6 +26,7 @@
       <div id="stage-frame" class="stage-frame">
         <div id="player"><div class="idle" aria-hidden="true"></div></div>
         <canvas id="enhanced-canvas" aria-hidden="true" hidden></canvas>
+        <canvas id="gpu-canvas" aria-hidden="true" hidden></canvas>
         <div id="boot-splash" class="boot-splash" hidden>
           <div class="boot-content">
             <span class="boot-spinner" aria-hidden="true"></span>
@@ -46,17 +47,10 @@
             <select id="graphics-startup" class="startup-graphics-select" aria-label="Choose graphics effect before starting GTA">
               <option value="original">Original — sharp pixels</option>
               <option value="enhanced">Enhanced HD — Scale2x</option>
+              <option value="smart">Smart HD — GPU edges (Phase 3)</option>
               <option value="vibrant">Enhanced HD + vivid colour</option>
               <option value="crt">CRT Classic</option>
             </select>
-            <label class="quiet-startup-option" for="quiet-startup">
-              <input id="quiet-startup" type="checkbox" checked>
-              <span>Quiet DOS startup <small>Hide command echoes, keep game launch intact</small></span>
-            </label>
-            <label class="quiet-startup-option" for="auto-video-skip">
-              <input id="auto-video-skip" type="checkbox" checked>
-              <span>Auto-skip DOS video setup <small>Send Esc once if a VGA text-mode prompt persists during boot</small></span>
-            </label>
             <button id="play" type="button" class="play-button" disabled>▶ Play GTA</button>
             <button id="add-file" type="button" class="load-button">+ Add File</button>
             <button id="install-local" type="button" class="local-install" disabled hidden>Remember this game on this PC</button>
@@ -86,6 +80,7 @@
         <select id="graphics-preset" aria-label="Built-in graphics enhancement preset">
           <option value="original">Original</option>
           <option value="enhanced">Enhanced HD · Scale2x</option>
+          <option value="smart">Smart HD · GPU</option>
           <option value="vibrant">Enhanced HD · Vibrant</option>
           <option value="crt">CRT Classic</option>
         </select>
