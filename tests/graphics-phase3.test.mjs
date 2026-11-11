@@ -33,7 +33,7 @@ test('London optional private uploads live alongside GTA but not inside game ove
   }
   assert.ok(html.indexOf('id="london69-file"') > html.indexOf('id="tools-panel"'));
   assert.ok(html.indexOf('id="london61-file"') > html.indexOf('id="tools-panel"'));
-  assert.match(html, /London 1961 — needs GTA \+ London 1969 \+ 1961/);
+  assert.match(app, /London 1961' \+ \(available61 \? '' : ' — needs GTA \+ London 1969 \+ 1961'/);
   assert.match(app,/if \(edition === 'london61' && playableSource\(\) && londonSources\.london69\)/);
   assert.match(app,/const inspected = await inspectGameFile\(file\)/);
   assert.match(app,/if \(inspected\.kind !== 'jsdos'\)/);
