@@ -13,7 +13,7 @@ function nameOf(name) {
   return name.replace(/\\/g, '/').replace(/^(\.\/)+/, '').toUpperCase();
 }
 function dosboxAutoexec(conf) {
-  const match = /^\[autoexec\]\s*$/im.exec(conf);
+  const match = /^\[autoexec\][ \t]*(?:\r?\n|$)/im.exec(conf);
   if (!match) return null;
   const rest = conf.slice(match.index + match[0].length);
   const section = /^\[[^\]\r\n]+\]\s*$/m.exec(rest);
