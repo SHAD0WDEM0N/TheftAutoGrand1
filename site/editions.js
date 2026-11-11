@@ -195,7 +195,7 @@ export function patchDosPixelAspect(conf) {
 // is not loaded as one huge ArrayBuffer. The old ZIP central directory remains inert
 // and a new ZIP central directory is appended after a replacement DOSBox config entry.
 export async function bundleWithGameMode(file, inspection, mode, { quiet = false, game = 'gta' } = {}) {
-  // Keep the untouched bundle only when its configuration cannot be inspected.
+  if (mode === 'auto' && !quiet) return file; // Keep original when boot patching is disabled.
   if (mode !== 'auto' && !inspection?.available?.includes(mode)) throw new Error('This game mode is not available in the selected bundle.');
   if (typeof inspection?.config !== 'string') {
     if (mode === 'auto') return file; // Preserve working unknown archive layout.
