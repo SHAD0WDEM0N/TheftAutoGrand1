@@ -1,18 +1,26 @@
-import { validateFile, configuration, quickStartConfig, mobileBundleRisk } from './core.js';
+import { inspectGameFile, inspectJsdos, configuration, quickStartConfig, mobileBundleRisk } from './core.js';
 import { loadPrivateShortcut, savePrivateShortcut, clearPrivateShortcut } from './storage.js';
 const $ = (id) => document.getElementById(id);
 const CDN = 'https://cdn.jsdelivr.net/npm/js-dos@8.5.3/dist/';
 let player = null, ci = null, bundleUrl = null, busy = false, active = false, paused = false, timer;
 let libraryPromise, bundleToolsPromise, savedShortcut = null;
+let selectedSource = null, savedSourceReady = false, fileWasChosen = false;
+let checkingSource = false, checkGeneration = 0;
+function playableSource() {
+  if (fileWasChosen) return selectedSource;
+  if (savedSourceReady && savedShortcut?.bundle) return { file: savedShortcut.bundle, kind: 'jsdos', from: 'saved' };
+  return null;
+}
+function showFileState(message, state = 'empty') {
+  $('source-info').dataset.state = state;
+  $('source-detail').textContent = message;
+}
 let isFullscreen = false;
-const RENDER_PREF_KEY = 'dos-garage-render-mode';
 const ASPECT_PREF_KEY = 'dos-garage-aspect-mode';
 const BACKEND_PREF_KEY = 'dos-garage-display-backend';
 const F11_KEY_CODE = 300;
 const idle = $('player').innerHTML;
 try {
-  const stored = localStorage.getItem(RENDER_PREF_KEY);
-  if (stored === 'smooth' || stored === 'pixelated') $('display-mode').value = stored;
   const aspect = localStorage.getItem(ASPECT_PREF_KEY);
   if (aspect === '4/3' || aspect === 'AsIs') $('aspect-mode').value = aspect;
   const backend = localStorage.getItem(BACKEND_PREF_KEY);
@@ -22,11 +30,11 @@ const heldKeys = new Map();
 const isTouchDevice = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && matchMedia('(pointer:coarse)').matches);
 function tooLargeForMobile(file) { return mobileBundleRisk(file?.size || 0, isTouchDevice); }
 function mobileNeedsOverride(quick = false) {
-  return tooLargeForMobile(quick ? savedShortcut?.bundle : $('game').files[0]) && !$('override-mobile').checked;
+  const file = quick ? savedShortcut?.bundle : (selectedSource?.file || $('game').files[0]);
+  return tooLargeForMobile(file) && !$('override-mobile').checked;
 }
 function updateMobileNotice() {
-  const file = $('game').files[0];
-  const target = file || savedShortcut?.bundle;
+  const target = playableSource()?.file || $('game').files[0] || (!fileWasChosen && savedShortcut?.bundle);
   const large = tooLargeForMobile(target);
   $('mobile-warning').hidden = !large;
   if (large) {
@@ -47,17 +55,18 @@ function releaseHeldKeys() {
 function status(message, badge) { $('status').textContent = message; if (badge) $('badge').textContent = badge; }
 function controls() {
   $('player').closest('.game-window').classList.toggle('is-playing', active);
-  $('pick-file').disabled = busy || active;
+  $('add-file').disabled = busy || active || checkingSource;
   $('native-resolution').disabled = busy || !ci;
   $('screenshot').disabled = busy || !ci;
   $('render-backend').disabled = busy || active;
-  $('game').disabled = busy || active;
-  $('launch').disabled = busy || active || !$('game').files.length || mobileNeedsOverride();
+  $('game').disabled = busy || active || checkingSource;
+  $('play').disabled = busy || active || checkingSource || !playableSource()
+    || mobileNeedsOverride(playableSource()?.from === 'saved');
   $('demo').disabled = busy || active;
   for (const id of ['pause', 'fullscreen', 'export']) $(id).disabled = busy || !ci;
   for (const button of document.querySelectorAll('[data-dos-key],[data-hold-key]')) button.disabled = busy || !ci;
   $('stop').disabled = busy || !active;
-  $('quick-play').disabled = busy || active || !savedShortcut || mobileNeedsOverride(true);
+
   $('remember').disabled = busy || !ci || !$('quick-commands').value.trim();
   $('forget').disabled = busy || active || !savedShortcut;
 }
@@ -97,21 +106,20 @@ async function end() {
   if (bundleUrl) URL.revokeObjectURL(bundleUrl);
   bundleUrl = null; $('pause').textContent = 'Pause'; $('player').innerHTML = idle; $('video-mode').textContent = 'Native: —'; isFullscreen = false; $('fullscreen').textContent = 'Fullscreen'; controls();
 }
-async function launch(demo = false, quick = false) {
+async function launch(demo = false) {
   busy = true; controls();
   try {
-    const file = demo || quick ? null : $('game').files[0];
-    const kind = demo ? null : quick ? 'jsdos' : await validateFile(file);
+    const sourceInfo = demo ? null : playableSource();
+    if (!demo && !sourceInfo) throw new Error('Add a file and complete the check before pressing Play GTA.');
+    const file = sourceInfo?.file || null;
+    const kind = sourceInfo?.kind || null;
+    const quick = sourceInfo?.from === 'saved';
     if (!demo && mobileNeedsOverride(quick)) {
-      throw new Error('Large game bundle blocked to avoid another mobile Safari crash. Use a smaller private bundle or tick Attempt anyway.');
+      throw new Error('Large game bundle blocked on mobile. Use a smaller private bundle or tick Attempt anyway.');
     }
     status('Loading emulator code…', 'LOADING'); await loadLibrary();
     const source = {};
-    if (quick) {
-      if (!savedShortcut?.bundle) throw new Error('No saved GTA shortcut found on this browser.');
-      bundleUrl = URL.createObjectURL(savedShortcut.bundle);
-      source.url = bundleUrl;
-    } else if (kind === 'jsdos') { bundleUrl = URL.createObjectURL(file); source.url = bundleUrl; }
+    if (kind === 'jsdos') { bundleUrl = URL.createObjectURL(file); source.url = bundleUrl; }
     else {
       source.dosboxConf = configuration(kind === 'iso', $('commands').value);
       if (kind === 'iso') {
@@ -125,8 +133,8 @@ async function launch(demo = false, quick = false) {
       theme: 'dark', autoStart: true, countDownStart: 0, autoSave: false,
       kiosk: true,
       softFullscreen: isTouchDevice,
-      fsChanges: { local: false }, renderAspect: $('aspect-mode').value, 
-      renderBackend: $('render-backend').value, imageRendering: $('display-mode').value,
+      fsChanges: { local: false }, renderAspect: $('aspect-mode').value,
+      renderBackend: $('render-backend').value, imageRendering: 'pixelated',
       onEvent(event, value) {
         if (event === 'fullscreen-change') { isFullscreen = Boolean(value); $('fullscreen').textContent = isFullscreen ? 'Exit fullscreen' : 'Fullscreen'; }
         if (event === 'ci-ready') {
@@ -153,20 +161,44 @@ async function launch(demo = false, quick = false) {
     status(error.message, 'IMPORT FAILED');
   } finally { busy = false; controls(); }
 }
+
+async function checkAddedFile(file) {
+  if (!file) return;
+  const generation = ++checkGeneration;
+  fileWasChosen = true;
+  checkingSource = true;
+  selectedSource = null;
+  $('override-mobile').checked = false;
+  $('file-info').textContent = file.name + ' · ' + (file.size / 1048576).toFixed(1) + ' MiB';
+  showFileState('Checking ' + file.name + '…', 'checking');
+  status('Checking game file structure locally…', 'CHECKING');
+  controls();
+  try {
+    const info = await inspectGameFile(file);
+    if (generation !== checkGeneration) return;
+    showFileState('File format valid. Preparing the DOS player…', 'checking');
+    status('Preparing DOS emulator scripts and renderer assets…', 'PREPARING');
+    await loadLibrary();
+    if (generation !== checkGeneration) return;
+    selectedSource = { file, kind: info.kind, from: 'file' };
+    showFileState('Ready to start: ' + file.name + ' (' + info.kind.toUpperCase() + '). Game launch not yet tested.', 'ready');
+    status(info.description + ' Press Play GTA to start.', 'FILE READY');
+    updateMobileNotice();
+  } catch (error) {
+    if (generation !== checkGeneration) return;
+    showFileState('File check failed: ' + error.message, 'error');
+    status('File check failed: ' + error.message, 'INVALID FILE');
+  } finally {
+    if (generation === checkGeneration) { checkingSource = false; controls(); }
+  }
+}
 $('game').addEventListener('change', () => {
   const file = $('game').files[0];
-  $('file-info').textContent = file ? `${file.name} · ${(file.size / 1048576).toFixed(1)} MiB` : 'No disc selected';
-  $('override-mobile').checked = false;
-  updateMobileNotice();
-  status('File selected locally. Launch to validate and load it.', 'READY TO IMPORT'); controls();
+  if (file) void checkAddedFile(file);
 });
-$('launch').addEventListener('click', () => launch());
-$('pick-file').addEventListener('click', () => {
-  $('tools-panel').open = true;
-  $('game').click();
-});
+$('add-file').addEventListener('click', () => $('game').click());
+$('play').addEventListener('click', () => launch());
 $('demo').addEventListener('click', () => launch(true));
-$('quick-play').addEventListener('click', () => launch(false, true));
 $('quick-commands').addEventListener('input', controls);
 $('override-mobile').addEventListener('change', controls);
 $('pause').addEventListener('click', () => { paused = !paused; player.setPaused(paused); $('pause').textContent = paused ? 'Resume' : 'Pause'; });
@@ -174,13 +206,7 @@ $('fullscreen').addEventListener('click', () => {
   if (!player) return;
   player.setFullScreen(!isFullscreen);
 });
-$('display-mode').addEventListener('change', () => {
-  const mode = $('display-mode').value;
-  if (!['smooth', 'pixelated'].includes(mode)) return;
-  try { localStorage.setItem(RENDER_PREF_KEY, mode); } catch { /* optional display preference only */ }
-  if (player) player.setImageRendering(mode);
-  status(mode === 'smooth' ? 'Smooth scaling enabled. This filters the picture, but does not increase GTA’s internal resolution.' : 'Crisp pixels enabled. For original GTA video modes, press Game resolution (F11).', 'DISPLAY READY');
-});
+// Only sharp pixel-art scaling is exposed: smooth interpolation blurred GTA's native sprites.
 $('aspect-mode').addEventListener('change', () => {
   const aspect = $('aspect-mode').value;
   if (!['4/3', 'AsIs'].includes(aspect)) return;
@@ -299,7 +325,13 @@ $('remember').addEventListener('click', async () => {
     const bundle = new Blob([updated], { type: 'application/zip' });
     await savePrivateShortcut(bundle, commands.trim());
     savedShortcut = { bundle, commands: commands.trim(), savedAt: Date.now() };
-    $('quick-info').textContent = 'GTA is saved privately in this browser. Next visit, press Play saved GTA.';
+    savedSourceReady = true;
+    fileWasChosen = false;
+    selectedSource = null;
+    $('game').value = '';
+    $('file-info').textContent = 'Saved private game will be used on your next launch.';
+    $('quick-info').textContent = 'Saved local copy ready; your game files stay on your PC.';
+    showFileState('Saved game ready. Press Play GTA next time.', 'ready');
     updateMobileNotice();
     status('One-click shortcut saved locally! Keep a separate exported backup; browser storage can be cleared.', 'SHORTCUT READY');
   } catch (error) {
@@ -315,21 +347,43 @@ $('forget').addEventListener('click', async () => {
   try {
     await clearPrivateShortcut();
     savedShortcut = null;
-    $('quick-info').textContent = 'No saved game on this browser yet.';
+    savedSourceReady = false;
+    $('quick-info').textContent = 'No saved game stored in this browser.';
+    if (!fileWasChosen) showFileState('Add your own ISO or .jsdos file to begin.', 'empty');
     updateMobileNotice();
     status('Saved shortcut removed from this browser. Your exported backup files are unchanged.', 'AWAITING INPUT');
   } catch (error) {
     status('Could not remove local copy: ' + error.message, 'STORAGE ERROR');
   } finally { busy = false; controls(); }
 });
-loadPrivateShortcut().then(record => {
-  if (record?.bundle instanceof Blob) {
-    savedShortcut = record;
-    $('quick-commands').value = record.commands || '';
-    $('quick-info').textContent = 'Saved GTA ready on this device. Press Play saved GTA to start.';
-    updateMobileNotice();
+
+loadPrivateShortcut().then(async record => {
+  if (!record?.bundle || !(record.bundle instanceof Blob)) { controls(); return; }
+  savedShortcut = record;
+  if (!fileWasChosen) {
+    checkingSource = true;
+    showFileState('Checking your saved local GTA copy…', 'checking');
+    controls();
   }
-  controls();
+  try {
+    await inspectJsdos(record.bundle);
+    await loadLibrary();
+    savedSourceReady = true;
+    $('quick-commands').value = record.commands || '';
+    $('quick-info').textContent = 'Private saved game found on this browser.';
+    if (!fileWasChosen) {
+      showFileState('Saved game ready. Press Play GTA.', 'ready');
+      status('Saved game bundle checked. Game execution is not yet verified for this session.', 'FILE READY');
+      updateMobileNotice();
+    }
+  } catch (error) {
+    savedSourceReady = false;
+    $('quick-info').textContent = 'Saved game needs attention: ' + error.message;
+    if (!fileWasChosen) showFileState('Saved copy could not be checked. Add a game file instead.', 'error');
+  } finally {
+    checkingSource = false;
+    controls();
+  }
 }).catch(error => {
   $('quick-info').textContent = 'Local game storage unavailable: ' + error.message;
   controls();
