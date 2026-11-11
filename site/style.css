@@ -76,6 +76,7 @@ a { color: var(--highlight); }
 .tool-group { padding: 19px 22px 24px; min-width: 0; }
 .tool-group:not(:last-child) { border-right: 1px solid var(--stroke); }
 .tool-group h2 { font-size: 14px; margin: 0 0 11px; }
+.tool-group select { width: 100%; padding: 9px 10px; background: #20282b; color: var(--text); border: 1px solid #546164; border-radius: 4px; }
 .tool-group p { font-size: 12px; line-height: 1.6; color: var(--muted); }
 .field-label { display: block; margin: 15px 0 5px; font-size: 12px; font-weight: 600; }
 input[type=file] { display: block; width: 100%; max-width: 100%; font-size: 12px; }
