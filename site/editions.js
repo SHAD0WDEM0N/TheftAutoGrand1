@@ -156,11 +156,46 @@ export function patchLondonAutoexec(conf, game, mode) {
   return autoexec.before + updated.join(newline) + autoexec.after;
 }
 
+/**
+ * DOS VGA 320x200 and similar modes used non-square pixels. Turn on DOSBox's
+ * own pixel-aspect correction without changing the game's native resolution,
+ * executable, video colour depth, or [autoexec] commands.
+ *
+ * Patch one [render] setting in the temporary js-dos bundle; never mutate
+ * the private source. Preserve CRLF files, other render settings, and
+ * idempotency so restored backups can safely be launched again.
+ */
+export function patchDosPixelAspect(conf) {
+  if (typeof conf !== 'string' || !conf.trim()) throw new Error('Missing DOSBox configuration.');
+  const newline = conf.includes('\r\n') ? '\r\n' : '\n';
+  const header = /^\[render\][ \t]*(?:\r?\n|$)/im.exec(conf);
+  if (!header) {
+    const join = conf.length && !conf.endsWith('\n') ? newline : '';
+    return conf + join + '[render]' + newline + 'aspect=true' + newline;
+  }
+  const sectionStart = header.index + header[0].length;
+  const following = conf.slice(sectionStart);
+  const nextSection = /^\[[^\]\r\n]+\][ \t]*(?:\r?\n|$)/m.exec(following);
+  const sectionEnd = nextSection ? sectionStart + nextSection.index : conf.length;
+  const body = conf.slice(sectionStart, sectionEnd);
+  const lines = body.split(/\r?\n/);
+  let found = false;
+  const rewritten = lines.map(line => {
+    if (!/^[ \t]*aspect[ \t]*=/i.test(line)) return line;
+    if (found) return line;
+    found = true;
+    return line.replace(/^([ \t]*aspect[ \t]*=)[^\r\n]*/i, '$1true');
+  });
+  if (!found) rewritten.unshift('aspect=true');
+  const result = conf.slice(0, sectionStart) + rewritten.join(newline) + conf.slice(sectionEnd);
+  return result;
+}
+
 // The patched archive is assembled using Blob slices: the original 750+ MB bundle
 // is not loaded as one huge ArrayBuffer. The old ZIP central directory remains inert
 // and a new ZIP central directory is appended after a replacement DOSBox config entry.
 export async function bundleWithGameMode(file, inspection, mode, { quiet = false, game = 'gta' } = {}) {
-  if (mode === 'auto' && !quiet) return file;
+  // Keep the untouched bundle only when its configuration cannot be inspected.
   if (mode !== 'auto' && !inspection?.available?.includes(mode)) throw new Error('This game mode is not available in the selected bundle.');
   if (typeof inspection?.config !== 'string') {
     if (mode === 'auto') return file; // Preserve working unknown archive layout.
@@ -169,7 +204,9 @@ export async function bundleWithGameMode(file, inspection, mode, { quiet = false
   const variantConf = mode === 'auto' ? inspection.config
     : game === 'gta' ? patchAutoexecGame(inspection.config, mode)
       : patchLondonAutoexec(inspection.config, game, mode);
-  const newConf = quiet ? patchQuietBoot(variantConf) : variantConf;
+  // Apply pixel-aspect correction on every verified private jsdos boot.
+  // This happens in the temporary ZIP config, not in the original game files.
+  const newConf = patchDosPixelAspect(quiet ? patchQuietBoot(variantConf) : variantConf);
   if (newConf === inspection.config) return file;
   const zip = await readZipIndex(file);
   const entry = zip.entries.find(e => nameOf(e.name) === CONFIG_PATH.toUpperCase());
