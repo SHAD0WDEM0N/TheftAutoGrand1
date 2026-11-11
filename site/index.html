@@ -31,6 +31,16 @@
             <h1>Grand Theft Auto</h1>
             <button id="play" type="button" class="play-button" disabled>▶ Play GTA</button>
             <button id="add-file" type="button" class="load-button">+ Add File</button>
+            <div id="edition-panel" class="edition-panel" hidden>
+              <label for="gta-edition">Graphics edition</label>
+              <select id="gta-edition" aria-label="Choose installed GTA DOS executable">
+                <option value="auto">Original (bundle default)</option>
+                <option value="gta8" disabled>Standard · GTA8.EXE</option>
+                <option value="gta24" disabled>High Colour · GTA24.EXE</option>
+                <option value="3dfx" disabled>3dfx Glide · experimental (not configured)</option>
+              </select>
+              <p id="edition-note">Available modes appear after checking the selected bundle.</p>
+            </div>
             <div id="source-info" class="source-info" data-state="empty" role="status" aria-live="polite">
               <span class="source-dot" aria-hidden="true"></span>
               <span id="source-detail">Add your own ISO or .jsdos file to begin.</span>
