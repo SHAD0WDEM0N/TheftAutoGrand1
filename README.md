@@ -1,3 +1,11 @@
+## Upload menu and readiness fix
+
+The **Add game files** control is a real click-to-open HTML disclosure menu, not a native select requiring the user to hold or drag the mouse. Click once to open, then click **Add GTA Data File**, **Add Mission Pack 1 Data File**, or **Add Mission Pack 2 Data File** to open that file picker.
+
+The launcher displays each filename with **Checking**, **Verified** or a concrete **Not compatible** error. The verification summary no longer resets to generic "Not loaded" after a failed inspection; instead it displays the exact error so the user can correct the file. Files that pass structural checks are marked verified without waiting for emulator scripts to download from the CDN. js-dos itself loads only when launching, allowing readiness to remain visible even with a network error.
+
+A verified London 1969 bundle becomes selectable once GTA is loaded; London 1961 requires the base GTA plus both mission pack bundles. These checks are structural only, not a guarantee that actual London gameplay boots. No GTA or London files are uploaded to GitHub.
+
 ## Edition-aware Add game files menu
 
 The GTA launch screen now has a three-option **Add game files** dropdown replacing the former generic Add File button. Select **Add GTA Data File**, **Add Mission Pack 1 Data File — London 1969**, or **Add Mission Pack 2 Data File — London 1961**. Each choice opens the appropriate private file picker. A visible three-line status panel reports which slot is loaded, and a structurally verified mission pack automatically selects its playable edition when prerequisites are present.
