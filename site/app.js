@@ -1025,7 +1025,7 @@ $('forget').addEventListener('click', async () => {
     savedShortcut = null;
     savedSourceReady = false;
     savedEditionInfo = null;
-    if (!fileWasChosen) setUploadProgress('gta', {state: 'error', message: 'Saved GTA bundle could not be checked: ' + error.message});
+    if (!fileWasChosen) setUploadProgress('gta', {state: 'empty', message: 'No saved GTA shortcut; add a game file.'});
     updateGameEditions();
     if (!fileWasChosen) updateEditionOptions(null);
     $('quick-info').textContent = 'No saved game stored in this browser.';
@@ -1040,24 +1040,22 @@ $('forget').addEventListener('click', async () => {
 loadPrivateShortcut().then(async record => {
   if (!record?.bundle || !(record.bundle instanceof Blob)) { controls(); return; }
   savedShortcut = record;
-  if (!fileWasChosen) {
-    checkingSource = true;
-    showFileState('Checking your saved local GTA copy…', 'checking');
-    controls();
-  }
+  // An existing quick-launch shortcut is optional. Never block the upload
+  // controls or fetch emulator code merely to inspect its local ZIP index.
+  // The emulator itself loads only when Play is pressed.
+  if (!fileWasChosen) showFileState('Checking saved local GTA copy…', 'checking');
   try {
     await inspectJsdos(record.bundle);
-    await loadLibrary();
-    savedEditionInfo = await inspectBundleEditions(record.bundle);
+    const editions = await inspectBundleEditions(record.bundle);
+    savedEditionInfo = editions;
     savedSourceReady = true;
-    setUploadProgress('gta', {state: 'ready', message: 'Verified locally saved GTA bundle (gameplay previously configured)'});
     $('quick-commands').value = record.commands || '';
     $('quick-info').textContent = 'Private saved game found on this browser.';
     if (!fileWasChosen) {
-      updateEditionOptions({kind:'jsdos', editions:savedEditionInfo});
+      setUploadProgress('gta', {state: 'ready', message: 'Verified locally saved GTA bundle'});
       updateGameEditions();
-      showFileState('Saved game ready. Press Play GTA.', 'ready');
-      status('Saved game bundle checked. Game execution is not yet verified for this session.', 'FILE READY');
+      showFileState('Saved game ready. Press Play GTA, or add a different file.', 'ready');
+      status('Saved game bundle checked locally. You can still add new files.', 'FILE READY');
       updateMobileNotice();
     }
   } catch (error) {
@@ -1066,7 +1064,6 @@ loadPrivateShortcut().then(async record => {
     $('quick-info').textContent = 'Saved game needs attention: ' + error.message;
     if (!fileWasChosen) showFileState('Saved copy could not be checked. Add a game file instead.', 'error');
   } finally {
-    checkingSource = false;
     controls();
   }
 }).catch(error => {
