@@ -36,7 +36,7 @@ test('London optional private uploads live alongside GTA but not inside game ove
   assert.match(app, /available61 = available69 && ready61/);
   assert.match(app,/if \(edition === 'london61' && playableSource\(\) && londonSources\.london69\)/);
   assert.match(app,/const inspected = await inspectGameFile\(file\)/);
-  assert.match(app, /verifyEditionBundle\(file, edition, editions\)/);
+  assert.match(app, /verifyEditionBundle\(file, edition, inspectedEditions\)/);
   assert.match(app,/if \(inspected\.kind !== 'jsdos'\)/);
   assert.match(app,/const sourceInfo = demo \? null : chosenGameSource\(\)/);
   assert.match(app,/const chosenMode = \$\('gta-edition'\)\.value/);
