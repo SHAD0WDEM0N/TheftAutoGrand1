@@ -2,6 +2,27 @@
 
 A minimal, gameplay-first browser launcher for a personally owned **DOS edition of Grand Theft Auto (1997)**. No game, disc image, installer, artwork, or music is distributed here. Select a file on your device; the application reads it into browser memory rather than uploading it.
 
+## Enhanced Graphics Phase 2 — real Scale2x + safer GTA24 boot (built in)
+
+### Before starting GTA
+A new **Enhanced graphics** selector appears on the launch screen, before **Play GTA**. It offers:
+
+- **Original:** unchanged sharp DOS pixels
+- **Enhanced HD — Scale2x:** site-bundled Scale2x neighbour-aware 2× source-pixel upscaling for suitable low-resolution modes
+- **Enhanced HD + vivid colour:** the same Scale2x processing plus optional higher saturation and contrast
+- **CRT Classic:** the Phase 1 lightweight CRT colour/scanline presentation
+
+The preset is also available under the game screen while playing; both selectors stay in sync. No enhanced-graphics mod download, user-supplied add-on, separate installer, copyrighted replacement sprite, shader CDN, game backup modification or private file upload is required. The algorithm is committed as `site/scale2x.js` and runs on js-dos frame events in the browser.
+
+**Technical limits:** Scale2x is a *real edge-aware pixel resampling algorithm*, but not an HD-remake: it computes a 2× picture from each DOS frame rather than introducing original higher-resolution sprites or textures. To avoid slowdowns, it processes frames at most 25 times/second and only when the native DOS framebuffer is at most 400×300 pixels. Higher F11 modes (for example 640×480) retain the original crisp native renderer; don't confuse the 2× output canvas with genuine HD source detail. Both windows and fullscreen remain 4:3. If the enhancement canvas fails, the normal game image stays visible.
+
+### GTA24 startup video-mode analysis
+The earlier boot splash unmasked the game about 1 second after detecting `GTA24.EXE`, even if SciTech Display Doctor was *still showing a text prompt*. Executable detection now **does not unmask DOS**. The boot cover waits for several consecutive colourful game frames before revealing the game. Dark or monochrome game menus may not be detected, so the original **Show game** and **Show DOS** buttons remain available.
+
+For the known startup screen shown in the owner's Windows recording, a dedicated **Skip video-mode test (Esc)** control appears once the DOS emulator is ready. The user must press it deliberately; we do not automatically send Esc to every GTA24 launch because Esc can also dismiss menus or intro screens. This may shorten a video-mode analysis prompt but is not guaranteed to remove all DOSBox or game-specific startup text. If the game won't boot unattended, inspect the personal `.jsdos` configuration and game setup separately; no amount of screen masking can correct a program that's waiting for mandatory input.
+
+This is a website-side enhancement; the original private game file is unchanged. The DOSBox game itself, its commands and proprietary content are not embedded in GitHub Pages.
+
 ## Enhanced Graphics — Phase 1 (built into the website)
 
 **No mod download, separate installer, game file modification, or third-party graphics assets.** Phase 1's own source is committed in `site/graphics.js`, `site/style.css`, `site/index.html` and `site/app.js`, so it ships automatically with GitHub Pages. It works with GTA8.EXE and GTA24.EXE because it affects the rendered browser picture, not the DOS game's own files.
