@@ -1,3 +1,9 @@
+## Native DOS pixel-aspect correction — default
+
+The launcher now enables DOSBox `[render] aspect=true` automatically for private GTA and London `.jsdos` bundles. This is the classic DOSBox option for correcting non-square VGA pixel modes such as 320×200, without forcing unsupported 800×600×32-bit video modes. It is applied only to the **temporary in-memory bundle's** `.jsdos/dosbox.conf` during Play. The original user-supplied file, selected executable, game data and autoexec commands are untouched. Existing `[render]` parameters are preserved, and files lacking a `[render]` section receive one. The website's 800×600 4:3 display frame and existing browser rendering options remain as before.
+
+**Testing note:** The browser canvas and native DOSBox renderer may both perform image scaling. If the picture remains stretched or now looks squeezed, report the exact game, DOS executable, native dimensions shown in the UI and a screenshot. This change has unit coverage for ZIP patching, but needs a real browser comparison to prove the correction looks right across GTA 1997 and both London packs.
+
 ## Standard 800×600 display default
 
 The browser now uses an **800×600 CSS-pixel 4:3 presentation viewport** on desktop, fitting within smaller windows and preserving 4:3 proportions in fullscreen. This is an *output* size, not a forced native VGA/SVGA mode. Every GTA and London edition retains its working DOS executable and colour depth; the browser renderer presents the original video frame at the correct outer ratio. Modern browser canvases use RGBA output internally, which does not imply that the DOS executable must run in a 32-bit video mode.
