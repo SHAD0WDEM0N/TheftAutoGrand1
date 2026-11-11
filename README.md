@@ -2,6 +2,14 @@
 
 A minimal, gameplay-first browser launcher for a personally owned **DOS edition of Grand Theft Auto (1997)**. No game, disc image, installer, artwork, or music is distributed here. Select a file on your device; the application reads it into browser memory rather than uploading it.
 
+## Built-in keyboard controls reference
+
+The website includes a collapsed **⌨ Keyboard Controls** panel immediately below the player bar. Expand it at any time to review original GTA 1 (1997) DOS default keyboard commands for **On Foot**, **Driving**, and **Menus & Shortcuts**. It adapts to mobile-width screens, and uses HTML's built-in disclosure control, so no extra downloads, JavaScript listeners or game-file modifications are needed.
+
+Highlights: arrow keys to walk/steer, Enter to enter/exit cars and select menu items, Ctrl to fire, Space to jump or handbrake, Z/X to change weapons, Tab for horn/special, F5 radio, F6 pause, F8 frame limiter, and F11 native video mode. Esc is the game's back/quit key, though in browser fullscreen it can first exit fullscreen. Click the game picture to restore keyboard focus if key presses affect the webpage instead. Key mappings can differ if the owner customised GTA's original settings.
+
+Controls references: [original GTA DOS manual](https://www.gamesdatabase.org/Media/SYSTEM/Microsoft_DOS/manual/Formated/Grand_Theft_Auto.pdf) and [GTA 1997 controls](https://gta.fandom.com/wiki/Controls_for_GTA_%281997_game%29).
+
 ## Enhanced Graphics Phase 2 — real Scale2x + safer GTA24 boot (built in)
 
 ### Before starting GTA
