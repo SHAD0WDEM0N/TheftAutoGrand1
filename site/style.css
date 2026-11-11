@@ -460,3 +460,32 @@ textarea { background: #0c1113; color: var(--text); border: 1px solid var(--stro
   .keyboard-guide-summary { display: none; }
   .keyboard-guide-section dl > div { grid-template-columns: 98px minmax(0, 1fr); }
 }
+
+
+/* Pre-launch quiet DOS option: low prominence but easy to switch off. */
+.start-menu .quiet-startup-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 12px 0 6px;
+  padding: 9px 11px;
+  text-align: left;
+  border: 1px solid #325f5c;
+  border-radius: 4px;
+  background: #142629;
+  color: #d9f3eb;
+  cursor: pointer;
+  font-size: 12px;
+}
+.start-menu .quiet-startup-option input {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  accent-color: var(--accent-teal);
+}
+.quiet-startup-option small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
