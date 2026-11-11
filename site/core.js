@@ -73,6 +73,10 @@ async function inspectIso(file) {
   if (sectorBytes !== 2048 || !sectors || sectors * sectorBytes > file.size + sectorBytes
       || rootLength < 34 || !rootSector || rootSector >= sectors)
     throw new Error('The ISO filesystem layout is invalid or incomplete.');
+  const root = new Uint8Array(await file.slice(rootSector * sectorBytes, (rootSector + 1) * sectorBytes).arrayBuffer());
+  if (root.length !== sectorBytes || root[0] < 34 || (root[25] & 2) !== 2
+      || root[32] !== 1 || root[33] !== 0)
+    throw new Error('The ISO root directory is missing or damaged.');
   const volume = new TextDecoder('ascii').decode(pvd.subarray(40, 72)).trim();
   return {
     label: volume || 'DOS disc',
