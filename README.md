@@ -1,3 +1,9 @@
+## Standard 800×600 display default
+
+The browser now uses an **800×600 CSS-pixel 4:3 presentation viewport** on desktop, fitting within smaller windows and preserving 4:3 proportions in fullscreen. This is an *output* size, not a forced native VGA/SVGA mode. Every GTA and London edition retains its working DOS executable and colour depth; the browser renderer presents the original video frame at the correct outer ratio. Modern browser canvases use RGBA output internally, which does not imply that the DOS executable must run in a 32-bit video mode.
+
+The output fix does not claim to correct all **internal** DOS pixel-aspect problems: a 320×200 VGA game can still require pixel-aspect correction at the emulator layer. If a mode still looks stretched after this update, inspect the actual native mode and capture a screenshot before changing the verified game startup. Classic DOSBox offers `[render] aspect=true` for non-square-pixel modes, but that needs testing alongside js-dos's 4:3 renderer to avoid double correction.
+
 ## Portable Save Manager — Phase 1
 
 The in-player **Save Manager** replaces the old **Export save / backup** control. Select a game slot (**GTA 1997**, **London 1969** or **London 1961**) and use:
