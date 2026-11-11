@@ -2,6 +2,7 @@ import { inspectGameFile, inspectJsdos, configuration, quickStartConfig, mobileB
 import { loadPrivateShortcut, savePrivateShortcut, clearPrivateShortcut } from './storage.js';
 import { inspectBundleEditions, bundleWithGameMode } from './editions.js';
 import { isGtaProgram, shouldMaskDosStartup, looksLikeGameFrame } from './boot.js';
+import { applyGraphicsPreset, GRAPHICS_STORAGE_KEY, normalizeGraphicsPreset, GRAPHICS_PRESETS } from './graphics.js';
 const $ = (id) => document.getElementById(id);
 const CDN = 'https://cdn.jsdelivr.net/npm/js-dos@8.5.3/dist/';
 let player = null, ci = null, bundleUrl = null, busy = false, active = false, paused = false, timer;
@@ -43,6 +44,19 @@ let isFullscreen = false;
 const BACKEND_PREF_KEY = 'dos-garage-display-backend';
 const F11_KEY_CODE = 300;
 const idle = $('player').innerHTML;
+function setGraphicsMode(value, save = true) {
+  const preset = applyGraphicsPreset($('stage-frame'), value);
+  $('graphics-preset').value = preset;
+  if (save) {
+    try { localStorage.setItem(GRAPHICS_STORAGE_KEY, preset); }
+    catch { /* Graphics work without browser storage. */ }
+  }
+  return preset;
+}
+let preferredGraphics = 'original';
+try { preferredGraphics = normalizeGraphicsPreset(localStorage.getItem(GRAPHICS_STORAGE_KEY)); }
+catch { /* Private mode can block storage. */ }
+setGraphicsMode(preferredGraphics, false);
 try {
   const backend = localStorage.getItem(BACKEND_PREF_KEY);
   if (backend === 'webgl' || backend === 'canvas') $('render-backend').value = backend;
@@ -337,6 +351,10 @@ $('game').addEventListener('change', () => {
   if (file) void checkAddedFile(file);
 });
 $('add-file').addEventListener('click', () => $('game').click());
+$('graphics-preset').addEventListener('change', () => {
+  const mode = setGraphicsMode($('graphics-preset').value);
+  status(GRAPHICS_PRESETS[mode].description + ' Original GTA assets are unchanged.', 'GRAPHICS: ' + GRAPHICS_PRESETS[mode].label.toUpperCase());
+});
 $('play').addEventListener('click', () => launch());
 $('demo').addEventListener('click', () => launch(true));
 $('show-dos').addEventListener('click', () => {
