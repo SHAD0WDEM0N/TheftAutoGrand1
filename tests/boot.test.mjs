@@ -26,11 +26,11 @@ test('only GTA executable names count as detected game launches', () => {
   }
 });
 
-test('startup splash is hidden by default, cancellable and fails open', () => {
+test('startup splash stays hidden by default and remains manually dismissible', () => {
   assert.match(html, /id="boot-splash"[^>]*hidden/);
   assert.match(html, /id="show-dos"/);
   assert.match(css, /\.boot-splash\s*\{/);
-  assert.match(app, /if \(bootSplashActive\) watchGtaStartup\(\)/);
+  assert.match(app, /watchGtaFrames\(ci\); watchGtaStartup\(\)/);
   assert.match(app, /await ci\.getRunningProgram\(\)/);
   assert.match(app, /isGtaProgram\(program\)/);
   assert.match(app, /bootSplashTimer = setTimeout\(/);
@@ -78,7 +78,6 @@ test('text prompt or blank frame is not mistaken for actual game graphics', () =
 
 test('optional install retains a private local copy and never uploads files', () => {
   assert.match(html, /id="install-local"/);
-  assert.match(app, /await savePrivateShortcut\(source\.file, ''\)/);
   assert.match(app, /await savePrivateShortcut\(source\.file, ''\)/);
   assert.match(app, /savedSourceReady = true/);
   assert.match(app, /fileWasChosen = false/);
