@@ -6,9 +6,18 @@ let player = null, ci = null, bundleUrl = null, busy = false, active = false, pa
 let libraryPromise, bundleToolsPromise, savedShortcut = null;
 let isFullscreen = false;
 const RENDER_PREF_KEY = 'dos-garage-render-mode';
+const ASPECT_PREF_KEY = 'dos-garage-aspect-mode';
+const BACKEND_PREF_KEY = 'dos-garage-display-backend';
 const F11_KEY_CODE = 300;
 const idle = $('player').innerHTML;
-try { const stored = localStorage.getItem(RENDER_PREF_KEY); if (stored === 'smooth' || stored === 'pixelated') $('display-mode').value = stored; } catch { /* private-mode storage may be unavailable */ }
+try {
+  const stored = localStorage.getItem(RENDER_PREF_KEY);
+  if (stored === 'smooth' || stored === 'pixelated') $('display-mode').value = stored;
+  const aspect = localStorage.getItem(ASPECT_PREF_KEY);
+  if (aspect === '4/3' || aspect === 'AsIs') $('aspect-mode').value = aspect;
+  const backend = localStorage.getItem(BACKEND_PREF_KEY);
+  if (backend === 'webgl' || backend === 'canvas') $('render-backend').value = backend;
+} catch { /* private-mode storage may be unavailable */ }
 const heldKeys = new Map();
 const isTouchDevice = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && matchMedia('(pointer:coarse)').matches);
 function tooLargeForMobile(file) { return mobileBundleRisk(file?.size || 0, isTouchDevice); }
@@ -40,6 +49,8 @@ function controls() {
   $('player').closest('.game-window').classList.toggle('is-playing', active);
   $('pick-file').disabled = busy || active;
   $('native-resolution').disabled = busy || !ci;
+  $('screenshot').disabled = busy || !ci;
+  $('render-backend').disabled = busy || active;
   $('game').disabled = busy || active;
   $('launch').disabled = busy || active || !$('game').files.length || mobileNeedsOverride();
   $('demo').disabled = busy || active;
@@ -114,7 +125,8 @@ async function launch(demo = false, quick = false) {
       theme: 'dark', autoStart: true, countDownStart: 0, autoSave: false,
       kiosk: true,
       softFullscreen: isTouchDevice,
-      fsChanges: { local: false }, renderAspect: '4/3', imageRendering: $('display-mode').value,
+      fsChanges: { local: false }, renderAspect: $('aspect-mode').value, 
+      renderBackend: $('render-backend').value, imageRendering: $('display-mode').value,
       onEvent(event, value) {
         if (event === 'fullscreen-change') { isFullscreen = Boolean(value); $('fullscreen').textContent = isFullscreen ? 'Exit fullscreen' : 'Fullscreen'; }
         if (event === 'ci-ready') {
@@ -169,11 +181,56 @@ $('display-mode').addEventListener('change', () => {
   if (player) player.setImageRendering(mode);
   status(mode === 'smooth' ? 'Smooth scaling enabled. This filters the picture, but does not increase GTA’s internal resolution.' : 'Crisp pixels enabled. For original GTA video modes, press Game resolution (F11).', 'DISPLAY READY');
 });
+$('aspect-mode').addEventListener('change', () => {
+  const aspect = $('aspect-mode').value;
+  if (!['4/3', 'AsIs'].includes(aspect)) return;
+  try { localStorage.setItem(ASPECT_PREF_KEY, aspect); } catch { /* optional preference */ }
+  if (player) player.setRenderAspect(aspect);
+  status(aspect === '4/3'
+    ? 'CRT 4:3 correction enabled. DOS VGA pixels can be non-square.'
+    : 'Raw source-pixel aspect selected for comparison; GTA may look vertically squashed.',
+    'DISPLAY READY');
+});
+$('render-backend').addEventListener('change', () => {
+  const backend = $('render-backend').value;
+  if (!['webgl', 'canvas'].includes(backend)) return;
+  try { localStorage.setItem(BACKEND_PREF_KEY, backend); } catch { /* optional preference */ }
+  status(backend === 'canvas'
+    ? 'Canvas fallback selected. It will be used on the next game launch.'
+    : 'WebGL rendering selected. It will be used on the next game launch.', 'DISPLAY READY');
+});
 $('native-resolution').addEventListener('click', () => {
   if (!ci || busy) return;
   if (paused) { player.setPaused(false); paused = false; $('pause').textContent = 'Pause'; }
   ci.simulateKeyPress(F11_KEY_CODE);
-  status('Sent F11 to GTA. Its internal resolution may change; the Native readout updates when the video mode changes.', 'GAME DISPLAY');
+  status('Sent F11 to GTA. This normally opens the game’s display-mode options. Select a supported mode in the game; native dimensions update if the framebuffer changes.', 'GAME DISPLAY');
+});
+$('screenshot').addEventListener('click', async () => {
+  if (!ci || busy) return;
+  busy = true; controls();
+  try {
+    const shot = await ci.screenshot();
+    if (!shot || shot.width <= 0 || shot.height <= 0) throw new Error('No game framebuffer was returned.');
+    const canvas = document.createElement('canvas');
+    canvas.width = shot.width;
+    canvas.height = shot.height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Could not create an image canvas in this browser.');
+    context.putImageData(shot, 0, 0);
+    const png = await new Promise((resolve, reject) => canvas.toBlob(
+      blob => blob ? resolve(blob) : reject(new Error('PNG encoding failed.')), 'image/png'));
+    const url = URL.createObjectURL(png);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'gta-1997-' + shot.width + 'x' + shot.height + '.png';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    status('Native ' + shot.width + '×' + shot.height + ' screenshot requested. This is the original game output, not an artificially enhanced image.', 'SCREENSHOT READY');
+  } catch (error) {
+    status('Screenshot failed: ' + error.message, 'SCREENSHOT ERROR');
+  } finally { busy = false; controls(); }
 });
 // Touch buttons hold the original DOS key down until the finger is released.
 // This is essential for steering/acceleration (a simulated tap does not work).
