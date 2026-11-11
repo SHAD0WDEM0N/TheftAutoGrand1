@@ -1,5 +1,5 @@
 import { inspectGameFile, inspectJsdos, configuration, quickStartConfig, mobileBundleRisk } from './core.js';
-import { loadPrivateShortcut, savePrivateShortcut, clearPrivateShortcut } from './storage.js';
+import { loadPrivateShortcut, savePrivateShortcut, clearPrivateShortcut, loadGameBackup, saveGameBackup } from './storage.js';
 import { inspectBundleEditions, inspectLondonGraphicsModes, bundleWithGameMode } from './editions.js';
 import { isGtaProgram, shouldMaskDosStartup, looksLikeGameFrame, shouldAutoSkipVideoProbe } from './boot.js';
 import { applyGraphicsPreset, GRAPHICS_STORAGE_KEY, normalizeGraphicsPreset, GRAPHICS_PRESETS } from './graphics.js';
@@ -17,6 +17,21 @@ let bootVideoSkipTimer = null, bootTextModeSamples = 0, bootVideoSkipSent = fals
 let scaleImage = null, scaleWidth = 0, scaleHeight = 0, scaleLastPaint = 0, scaleDisabled = false;
 let gpuRenderer = null, gpuLastFrame = 0, gpuUnavailable = false;
 const londonSources = { london69: null, london61: null };
+const backupSources = {gta: null, london69: null, london61: null};
+const useBackupByGame = {gta: true, london69: true, london61: true};
+const backupLabels = {gta:'GTA-1997',london69:'London-1969',london61:'London-1961'};
+let backupChecking = false;
+function backupSlot() { return $('backup-game').value; }
+function updateBackupStatus() {
+  const game = backupSlot();
+  const record = backupSources[game];
+  $('backup-status').textContent = record
+    ? 'Latest ' + backupLabels[game] + ' backup: ' + new Date(record.savedAt).toLocaleString() +
+      ' (' + (record.bundle.size / 1048576).toFixed(1) + ' MiB). ' +
+      (useBackupByGame[game] ? 'Next Play uses this backup.' : 'A newly uploaded game file is selected instead.')
+    : 'No backup for ' + backupLabels[game] + '. Import one or save during gameplay.';
+}
+
 let londonChecking = false;
 const selectedGraphicsByGame = {gta: 'auto', london69: 'auto', london61: 'auto'};
 let activeGameEdition = 'gta', activeDosMode = 'auto';
@@ -27,17 +42,18 @@ function setUploadProgress(edition, progress) {
 }
 function chosenGameSource() {
   const edition = $('game-edition').value;
+  if (useBackupByGame[edition] && backupSources[edition]) return backupSources[edition].source;
   if (edition === 'gta') return playableSource();
   if (edition === 'london69' && playableSource()) return londonSources.london69;
   if (edition === 'london61' && playableSource() && londonSources.london69) return londonSources.london61;
   return null;
 }
 function updateGameEditions() {
-  const base = !!playableSource();
-  const ready69 = !!londonSources.london69;
-  const ready61 = !!londonSources.london61;
-  const available69 = base && ready69;
-  const available61 = available69 && ready61;
+  const base = !!playableSource() || !!backupSources.gta;
+  const ready69 = !!londonSources.london69 || !!backupSources.london69;
+  const ready61 = !!londonSources.london61 || !!backupSources.london61;
+  const available69 = !!backupSources.london69 || (base && ready69);
+  const available61 = !!backupSources.london61 || (available69 && ready61);
   for (const option of $('game-edition').options) {
     if (option.value === 'london69') {
       option.disabled = !available69;
@@ -245,10 +261,15 @@ function controls() {
   $('gta-edition').disabled = busy || active || checkingSource;
   $('game-edition').disabled = busy || active || checkingSource || londonChecking;
   for (const id of ['london69-file', 'london61-file']) $(id).disabled = busy || active || londonChecking;
+  $('backup-game').disabled = busy || backupChecking || active;
+  $('save-progress').disabled = busy || backupChecking || !ci || !active;
+  $('export').disabled = busy || backupChecking || !backupSources[backupSlot()];
+  $('import-backup').disabled = busy || backupChecking || active;
+  $('backup-file').disabled = busy || backupChecking || active;
   $('play').disabled = busy || active || checkingSource || londonChecking || !chosenGameSource()
     || mobileNeedsOverride(chosenGameSource()?.from === 'saved');
   $('demo').disabled = busy || active;
-  for (const id of ['pause', 'fullscreen', 'export']) $(id).disabled = busy || !ci;
+  for (const id of ['pause', 'fullscreen']) $(id).disabled = busy || !ci;
   for (const button of document.querySelectorAll('[data-dos-key],[data-hold-key]')) button.disabled = busy || !ci;
   $('stop').disabled = busy || !active;
 
@@ -481,6 +502,8 @@ async function launch(demo = false) {
       const startBundle = await bundleWithGameMode(file, edition, chosenMode, { quiet, game: selectedGame });
       activeGameEdition = selectedGame;
       activeDosMode = chosenMode;
+      $('backup-game').value = selectedGame;
+      updateBackupStatus();
       bundleUrl = URL.createObjectURL(startBundle);
       source.url = bundleUrl;
       status((chosenMode === 'auto'
@@ -574,6 +597,7 @@ async function checkAddedFile(file) {
       if (generation !== checkGeneration) return;
     }
     selectedSource = { file, kind: info.kind, from: 'file', editions };
+    useBackupByGame.gta = false;
     setUploadProgress('gta', {state: 'ready', message: 'Verified ' + file.name + ' (ZIP/DOS structure; gameplay not tested)'});
     updateEditionOptions(selectedSource);
     updateGameEditions();
@@ -610,6 +634,7 @@ async function checkLondonBundle(edition, file) {
     const verification = await verifyEditionBundle(file, edition, inspectedEditions);
     const editions = await inspectLondonGraphicsModes(file, edition, inspectedEditions);
     londonSources[edition] = { file, kind: 'jsdos', from: 'london', editions, verification };
+    useBackupByGame[edition] = false;
     setUploadProgress(edition, {state: 'ready', message: 'Verified ' + file.name + ' (' + verification.fileCount + ' entries; gameplay not tested)'});
     $(statusId).textContent = 'Verified ' + file.name + ' (' + verification.fileCount + ' ZIP entries). ' +
       verification.note + ' Gameplay still requires testing.';
@@ -836,19 +861,123 @@ $('stop').addEventListener('click', async () => {
   catch (error) { status('Could not stop cleanly: ' + error.message + '. Export if possible, then reload.'); }
   finally { busy = false; controls(); }
 });
-$('export').addEventListener('click', async () => {
-  busy = true; controls(); status('Creating a private backup. A full disc backup can take a while…');
-  try {
-    ci.pause();
-    const bytes = await ci.persist(false);
-    if (!bytes) throw new Error('The emulator did not return a backup.');
-    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }));
-    const link = document.createElement('a'); link.href = url; link.download = 'dos-garage-backup.jsdos'; link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-    status('Backup download requested. Confirm the file is saved before ending this session. Keep it private.');
-  } catch (error) { status('Backup failed: ' + error.message + ' Keep this tab open and retry.'); }
-  finally { if (!paused) ci.resume(); busy = false; controls(); }
+async function inspectImportedBackup(file, game) {
+  if (!file?.name?.toLowerCase().endsWith('.jsdos')) throw new Error('Select a .jsdos backup archive.');
+  const info = await inspectGameFile(file);
+  if (info.kind !== 'jsdos') throw new Error('This is not a js-dos filesystem backup.');
+  const inspected = await inspectBundleEditions(file);
+  if (typeof inspected?.config !== 'string') throw new Error('Backup does not include a readable DOSBox startup configuration.');
+  if (game === 'gta') {
+    if (!inspected.detected.length) throw new Error('This backup does not contain the GTA 1997 DOS executables.');
+    return { file, kind: 'jsdos', from: 'backup', editions: inspected };
+  }
+  const verified = await verifyEditionBundle(file, game, inspected);
+  const editions = await inspectLondonGraphicsModes(file, game, inspected);
+  return {file, kind: 'jsdos', from: 'backup', editions, verification: verified};
+}
+function activateBackup(game, record) {
+  backupSources[game] = record;
+  useBackupByGame[game] = true;
+  updateGameEditions();
+  if ($('game-edition').querySelector('[value="' + game + '"]')?.disabled === false) {
+    $('game-edition').value = game;
+    updateEditionOptions(chosenGameSource());
+  }
+  updateBackupStatus();
+  updateMobileNotice();
+  controls();
+}
+$('backup-game').addEventListener('change', () => {updateBackupStatus(); controls();});
+$('game-edition').addEventListener('change', () => {
+  if (!active) { $('backup-game').value = $('game-edition').value; updateBackupStatus(); }
 });
+$('save-manager').addEventListener('toggle', () => {
+  if ($('save-manager').open && active) {
+    $('backup-game').value = activeGameEdition;
+    updateBackupStatus();
+  }
+});
+$('save-progress').addEventListener('click', async () => {
+  if (!ci || !active || busy) return;
+  const game = activeGameEdition;
+  busy = true; controls();
+  status('Saving ' + backupLabels[game] + ' filesystem progress locally…', 'SAVING');
+  const shouldResume = !paused;
+  let suspended = false;
+  try {
+    ci.pause(); suspended = true;
+    const bytes = await ci.persist(false);
+    if (!bytes || !(bytes.byteLength || bytes.size)) throw new Error('DOSBox returned no backup data.');
+    const blob = new Blob([bytes], {type:'application/zip'});
+    const named = new File([blob], backupLabels[game]+'.jsdos', {type:'application/zip'});
+    const source = await inspectImportedBackup(named, game);
+    await saveGameBackup(game, blob);
+    const record = {bundle: blob, source: {...source, file: blob}, savedAt: Date.now()};
+    activateBackup(game, record);
+    status('Saved ' + backupLabels[game] + ' filesystem backup locally. Export it if you want a portable copy. This is not an instant gameplay snapshot.', 'BACKUP SAVED');
+  } catch (error) {
+    status('Save failed: ' + error.message + '. The current game has not been replaced.', 'SAVE FAILED');
+  } finally {
+    if (suspended && shouldResume) ci.resume();
+    busy = false; controls();
+  }
+});
+$('export').addEventListener('click', () => {
+  const game = backupSlot();
+  const record = backupSources[game];
+  if (!record || busy) return;
+  const url = URL.createObjectURL(record.bundle);
+  const link = document.createElement('a');
+  link.href = url; link.download = backupLabels[game] + '-backup.jsdos';
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  status('Download requested for ' + backupLabels[game] + '. Keep this private; backups may contain the complete game files.', 'BACKUP EXPORTED');
+});
+$('import-backup').addEventListener('click', () => {
+  if (busy || active || backupChecking) return;
+  $('backup-file').value = '';
+  $('backup-file').click();
+});
+$('backup-file').addEventListener('change', async () => {
+  const file = $('backup-file').files[0];
+  if (!file || busy || active) return;
+  const game = backupSlot();
+  backupChecking = true; controls();
+  status('Checking imported ' + backupLabels[game] + ' backup locally…', 'IMPORTING');
+  try {
+    const source = await inspectImportedBackup(file, game);
+    if (!confirm('Import ' + file.name + ' as the latest ' + backupLabels[game] +
+      ' backup? This replaces the previous local backup for that game. It does not resume at an exact frame.')) {
+      status('Backup import cancelled. Existing local backups were not changed.', 'IMPORT CANCELLED');
+      return;
+    }
+    const blob = new Blob([file], {type:'application/zip'});
+    await saveGameBackup(game, blob);
+    const storedSource = {...source, file: blob};
+    const record = {bundle: blob, source: storedSource, savedAt: Date.now()};
+    activateBackup(game, record);
+    status('Imported ' + backupLabels[game] + ' backup. Select Play to launch with the saved filesystem.', 'BACKUP IMPORTED');
+  } catch (error) {
+    status('Backup import rejected: ' + error.message, 'IMPORT FAILED');
+  } finally {
+    backupChecking = false; controls();
+  }
+});
+async function restoreSavedBackups() {
+  for (const game of ['gta','london69','london61']) {
+    try {
+      const stored = await loadGameBackup(game);
+      if (!stored?.bundle) continue;
+      const named = new File([stored.bundle], backupLabels[game]+'.jsdos', {type:'application/zip'});
+      const source = await inspectImportedBackup(named,game);
+      backupSources[game] = {bundle:stored.bundle, source:{...source,file:stored.bundle},savedAt:stored.savedAt};
+    } catch (error) {
+      status('Could not load saved '+backupLabels[game]+' backup: '+error.message,'BACKUP NOTICE');
+    }
+  }
+  updateGameEditions(); updateBackupStatus(); controls();
+}
+void restoreSavedBackups();
 
 $('remember').addEventListener('click', async () => {
   const commands = $('quick-commands').value;

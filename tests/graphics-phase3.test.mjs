@@ -33,7 +33,8 @@ test('London optional private uploads live alongside GTA but not inside game ove
   }
   assert.ok(html.indexOf('id="london69-file"') > html.indexOf('id="tools-panel"'));
   assert.ok(html.indexOf('id="london61-file"') > html.indexOf('id="tools-panel"'));
-  assert.match(app, /available61 = available69 && ready61/);
+  assert.match(app, /available61 = !!backupSources\.london61 \|\| \(available69 && ready61\)/);
+  assert.match(app, /available69 = !!backupSources\.london69 \|\| \(base && ready69\)/);
   assert.match(app,/if \(edition === 'london61' && playableSource\(\) && londonSources\.london69\)/);
   assert.match(app,/const inspected = await inspectGameFile\(file\)/);
   assert.match(app, /verifyEditionBundle\(file, edition, inspectedEditions\)/);
@@ -76,8 +77,8 @@ test('changing London edition reconstructs the executable selector before Play',
   assert.match(app, /game === 'london69'/);
   assert.match(app, /game === 'london61'/);
   assert.match(app, /updateEditionOptions\(chosenGameSource\(\)\)/);
-  assert.match(html, /app\.js\?v=london-labels-20261111c/);
-  assert.match(html, /style\.css\?v=london-labels-20261111c/);
+  assert.match(html, /app\.js\?v=save-manager-phase1-20261111/);
+  assert.match(html, /style\.css\?v=save-manager-phase1-20261111/);
 });
 
 

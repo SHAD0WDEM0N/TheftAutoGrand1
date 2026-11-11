@@ -624,3 +624,55 @@ textarea { background: #0c1113; color: var(--text); border: 1px solid var(--stro
 .edition-file-status p[data-state="ready"] { color: #9be3b6; }
 .edition-file-status p[data-state="checking"] { color: var(--accent-gold); }
 .edition-file-status p[data-state="error"] { color: #ffaba5; }
+
+
+/* Portable filesystem save manager lives with the running player controls. */
+.save-manager { position: relative; }
+.save-manager > summary {
+  list-style: none;
+  cursor: pointer;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 4px;
+  background: var(--panel-raised);
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.save-manager > summary::-webkit-details-marker { display: none; }
+.save-manager[open] > summary { border-color: var(--accent-teal); }
+.save-manager-popover {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  right: 0;
+  z-index: 25;
+  width: min(310px, 90vw);
+  padding: 13px;
+  background: #172428;
+  border: 1px solid #507b7c;
+  border-radius: 6px;
+  box-shadow: 0 15px 28px #000a;
+}
+.save-manager-popover label { display: block; margin: 8px 0 4px; color: var(--accent-gold); font-size: 12px; }
+.save-manager-popover select, .save-manager-popover button {
+  width: 100%;
+  min-height: 37px;
+  border: 1px solid #486269;
+  background: #21383c;
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 4px;
+  margin: 4px 0;
+  text-align: left;
+  font-size: 12px;
+}
+.save-manager-popover button:hover:not(:disabled) { background: #35565a; }
+.save-manager-explainer, #backup-status {
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 7px 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+#backup-status { padding-top: 8px; border-top: 1px solid #375057; }

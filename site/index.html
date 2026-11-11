@@ -6,8 +6,8 @@
   <meta name="description" content="Play your personally owned 1997 GTA DOS game in a browser. Game files remain on your device.">
   <meta name="theme-color" content="#0d0f0f">
   <title>Grand Theft Auto (1997) · DOS Player</title>
-  <link rel="stylesheet" href="./style.css?v=london-labels-20261111c">
-  <script type="module" src="./app.js?v=london-labels-20261111c"></script>
+  <link rel="stylesheet" href="./style.css?v=save-manager-phase1-20261111">
+  <script type="module" src="./app.js?v=save-manager-phase1-20261111"></script>
 </head>
 <body>
   <a class="skip" href="#player">Skip to game</a>
@@ -110,7 +110,23 @@
       </div>
       <div class="player-actions">
         <button id="screenshot" type="button" disabled>Save screenshot</button>
-        <button id="export" disabled>Export save / backup</button>
+        <details id="save-manager" class="save-manager">
+          <summary>Save Manager ▾</summary>
+          <div class="save-manager-popover">
+            <p class="save-manager-explainer">Portable DOS filesystem backups, not instant save states. Save in-game progress before capturing.</p>
+            <label for="backup-game">Game backup slot</label>
+            <select id="backup-game" aria-label="Choose game for backup">
+              <option value="gta">GTA 1997</option>
+              <option value="london69">London 1969</option>
+              <option value="london61">London 1961</option>
+            </select>
+            <button id="save-progress" type="button" disabled>Save Progress</button>
+            <button id="export" type="button" disabled>Export Backup</button>
+            <button id="import-backup" type="button">Import Backup</button>
+            <input id="backup-file" class="visually-hidden" type="file" accept=".jsdos">
+            <p id="backup-status" role="status" aria-live="polite">No local backup loaded.</p>
+          </div>
+        </details>
         <button id="stop" disabled>End game</button>
       </div>
     </div>

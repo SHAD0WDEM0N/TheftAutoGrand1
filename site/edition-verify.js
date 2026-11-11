@@ -24,11 +24,19 @@ export async function verifyEditionBundle(file, edition, inspection) {
   // with files but a GTA8.EXE startup command would launch the wrong game.
   const section = inspection.config.split(/^\[autoexec\][ \t]*$/im)[1] || '';
   const commands = section.split(/^\[[^\r\n]+\][ \t]*$/m)[0];
-  const launch = commands.split(/\r?\n/).some(line =>
-    !/^\s*(rem\b|::|#)/i.test(line) &&
-    new RegExp('(?:^|[\\s\\\\/])(?:call\\s+)?'+expected.replace('.','\\.')+'(?:\\s|$)','i').test(line.trim())
-  );
-  if (!launch) throw new Error('DOSBox does not launch '+expected+'. Check the selected conversion.');
+  const allowedExecutables = edition === 'london69'
+    ? ['gta8_uk.exe','gta24_uk.exe']
+    : ['gta24_61.exe'];
+  const launch = commands.split(/\r?\n/).some(line => {
+    const command = line.trim();
+    if (/^(rem\b|::|#)/i.test(command)) return false;
+    const executable = command.split(/\s+/)[0].replace(/\\/g,'/').split('/').pop().toLowerCase();
+    const called = /^call\s+(.+)$/i.exec(command);
+    const calledName = called?.[1]?.trim().split(/\s+/)[0].replace(/\\/g,'/').split('/').pop().toLowerCase();
+    return executable === expected.toLowerCase() || calledName === expected.toLowerCase()
+      || allowedExecutables.includes(executable);
+  });
+  if (!launch) throw new Error('DOSBox does not launch '+expected+' or a verified '+edition+' executable. Check the selected conversion.');
   return {
     edition,
     fileCount: index.entries.length,

@@ -1,3 +1,15 @@
+## Portable Save Manager — Phase 1
+
+The in-player **Save Manager** replaces the old **Export save / backup** control. Select a game slot (**GTA 1997**, **London 1969** or **London 1961**) and use:
+
+- **Save Progress** while that game is running: pauses the emulator, calls `ci.persist(false)` to capture the entire DOS **filesystem** as a ZIP-based `.jsdos` bundle, validates it, then stores the latest backup for that game separately in the browser's IndexedDB. Save the game in GTA's own menu first, if applicable, so its progress is actually written to disk.
+- **Export Backup**: downloads the current local slot's complete `.jsdos` filesystem archive. It may contain the full copyrighted game, not just a tiny progress file; keep it private. The backup is potentially large and browser storage space may be insufficient.
+- **Import Backup**: after ending any running session, choose a `.jsdos` backup and the destination game slot, validate its game executables, London files and DOSBox startup configuration, and confirm before replacing the local slot. The next **Play** uses this restored filesystem, including the save files stored inside the backup.
+
+Each game has **one latest backup slot**, separate from the original GTA quick-start shortcut. Existing saved GTA quick-start data is preserved by the database upgrade. Browser data can be cleared and storage quotas vary, so **export a file** if you need a dependable off-device backup.
+
+**This is not a save state**: it does not capture CPU, RAM, sound or the exact point in a running mission. It preserves only files on the emulated drive, which may include normal in-game save progress. Backups do not hot-swap into an active DOSBox session. True freeze-and-resume save states require a separate emulator-backend investigation.
+
 ## London graphics edition selection
 
 The **Graphics edition** control is now scoped to the currently selected game. GTA 1997 still uses the original `GTA8.EXE` / `GTA24.EXE` modes (when verified); London 1969 uses `GTA8_UK.EXE` and `GTA24_UK.EXE`; London 1961 currently exposes `GTA24_61.EXE` only. Each available mode is checked against the private bundle's ZIP directory. You can switch the game edition and independently select a DOS executable for that game. Choices apply to the **next launch**; they do not hot-swap a running DOS process.
