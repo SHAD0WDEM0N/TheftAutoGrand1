@@ -169,3 +169,47 @@ textarea { background: #0c1113; color: var(--text); border: 1px solid var(--stro
 .edition-panel select:disabled { opacity:.6; }
 .edition-panel select option:disabled { color: #75858a; }
 #edition-note { margin: 8px 0 0; font-size: 11px; color: var(--muted); line-height:1.55; }
+
+/* Letterbox the game inside the screen rather than stretching js-dos to 16:9.
+   Native fullscreen targets #stage-frame, while #player stays exactly 4:3. */
+.aspect-lock {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  padding: 5px 9px;
+  border: 1px solid #397570;
+  border-radius: 4px;
+  background: #193331;
+  color: #acf1de;
+  font: 700 11px ui-monospace, Consolas, monospace;
+  letter-spacing: .2px;
+}
+#stage-frame:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: auto;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+#stage-frame:fullscreen #player {
+  position: relative;
+  inset: auto;
+  flex: none;
+  width: min(100vw, 133.333vh);
+  width: min(100vw, 133.333dvh);
+  height: auto;
+  max-height: 100vh;
+  max-height: 100dvh;
+  aspect-ratio: 4 / 3;
+  background: #000;
+}
+#stage-frame:fullscreen #player canvas { max-width: 100%; }

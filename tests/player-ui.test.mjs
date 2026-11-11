@@ -23,7 +23,7 @@ test('game window precedes collapsible settings and replaces advertising layout'
 
 test('desktop display tools are wired to supported js-dos commands', () => {
   assert.match(script, /kiosk:\s*true/);
-  assert.match(script, /renderAspect:\s*\$\('aspect-mode'\)\.value/);
+  assert.match(script, /renderAspect:\s*'4\/3'/);
   assert.match(script, /renderBackend:\s*\$\('render-backend'\)\.value/);
   assert.match(script, /imageRendering:\s*'pixelated'/);
   assert.ok(!html.includes('<option value="smooth">'));
@@ -34,7 +34,7 @@ test('desktop display tools are wired to supported js-dos commands', () => {
   assert.match(script, /ci\.simulateKeyPress\(F11_KEY_CODE\)/);
   assert.match(script, /F11_KEY_CODE\s*=\s*300/);
   assert.match(script, /onFrameSize\(\(width, height\)/);
-  assert.match(script, /player\.setFullScreen\(!isFullscreen\)/);
+  assert.match(script, /\$\('stage-frame'\)\.requestFullscreen\(\)/);
 });
 
 test('private game import and save paths are still available', () => {
@@ -47,17 +47,18 @@ test('private game import and save paths are still available', () => {
 });
 
 test('video diagnostics are wired to supported live and start-only js-dos operations', () => {
-  for (const id of ['aspect-mode','render-backend','screenshot']) {
+  for (const id of ['render-backend','screenshot']) {
     assert.ok(html.includes('id="' + id + '"'));
   }
-  assert.match(script, /player\.setRenderAspect\(aspect\)/);
+  assert.match(script, /player\.setRenderAspect\('4\/3'\)/);
   assert.match(script, /ci\.screenshot\(\)/);
   assert.match(script, /context\.putImageData\(shot, 0, 0\)/);
   assert.match(script, /canvas\.toBlob\(/);
   assert.match(script, /'image\/png'/);
   assert.match(script, /\$\('render-backend'\)\.disabled = busy \|\| active/);
-  assert.match(html, /<option value="4\/3">CRT 4:3<\/option>/);
-  assert.match(html, /<option value="AsIs">Raw pixels<\/option>/);
+  assert.ok(!html.includes('id="aspect-mode"'));
+  assert.ok(!html.includes('Raw pixels'));
+  assert.match(html, /Display · 4:3 locked/);
 });
 
 test('single Play CTA is disabled until a local file has passed preflight', () => {
@@ -84,4 +85,18 @@ test('F11 screen-mode control reports running DOS executable rather than promisi
   assert.match(script, /ci\.simulateKeyPress\(F11_KEY_CODE\)/);
   assert.ok(html.includes('Screen mode (F11)'));
   assert.ok(!html.includes('GTA display menu (F11)'));
+});
+
+test('desktop and fullscreen are both locked to a centered 4:3 picture', () => {
+  assert.match(css, /\.stage-frame\s*\{[\s\S]*?aspect-ratio:\s*4\s*\/\s*3/);
+  assert.match(css, /#stage-frame:fullscreen\s*\{[\s\S]*?display:\s*flex/);
+  assert.match(css, /#stage-frame:fullscreen #player\s*\{[\s\S]*?aspect-ratio:\s*4\s*\/\s*3/);
+  assert.match(css, /#stage-frame:fullscreen\s*\{[\s\S]*?background:\s*#000/);
+  assert.match(script, /document\.fullscreenElement === \$\('stage-frame'\)/);
+  assert.match(script, /document\.addEventListener\('fullscreenchange'/);
+  assert.match(script, /document\.exitFullscreen\(\)/);
+  assert.match(script, /renderAspect:\s*'4\/3'/);
+  assert.ok(!script.includes('setFullScreen('), 'Avoid the js-dos fullscreen path that may stretch to screen width');
+  assert.ok(!html.includes('value="16/9"'));
+  assert.ok(!html.includes('value="AsIs"'));
 });

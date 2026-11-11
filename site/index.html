@@ -57,11 +57,7 @@
         <select id="display-mode" aria-label="Picture quality">
           <option value="pixelated">Sharp pixels (recommended)</option>
         </select>
-        <label for="aspect-mode">Shape</label>
-        <select id="aspect-mode" aria-label="Screen aspect ratio">
-          <option value="4/3">CRT 4:3</option>
-          <option value="AsIs">Raw pixels</option>
-        </select>
+        <span class="aspect-lock" title="Classic GTA is always displayed in a 4:3 viewport, including fullscreen.">Display · 4:3 locked</span>
         <span id="video-mode" class="video-mode" aria-live="polite">Native: —</span>
         <span id="program-info" class="video-mode" aria-live="polite">Program: —</span>
         <button id="inspect-program" type="button" title="Identify the running DOS executable before trying higher-resolution modes" disabled>Check GTA version</button>
@@ -124,7 +120,7 @@ dir</textarea>
           <p><strong>Screen mode (F11)</strong> sends GTA's documented video-mode key while the game runs. It may do nothing in certain game states or editions, and does not itself force 1080p or the maximum mode.</p>
           <p>GTA saves its resolution preference in GTADATA/PLAYER_A.DAT. To keep a confirmed setting, export an updated private .jsdos backup after changing it. Never edit the original game's save data without a backup.</p>
           <p><strong>Sharp pixels</strong> stays enabled to avoid the blurry smoothing effect. The game remains limited by GTA's original DOS graphics resolution.</p>
-          <p><strong>Shape: CRT 4:3</strong> corrects non-square VGA pixels. <strong>Raw pixels</strong> shows the uncorrected source for comparison. Neither changes internal game resolution.</p>
+          <p><strong>Aspect ratio is locked to 4:3</strong>, including fullscreen. On widescreen monitors, black side bars keep GTA from stretching to 16:9. Original VGA resolutions such as 320×200 are shown with classic CRT-style aspect correction.</p>
           <p><strong>Verify before Play</strong> checks the ISO or .jsdos archive structure and prepares the emulator code; it does not run GTA or precompile every graphics operation. Full gameplay compatibility is only confirmed when you start the game.</p>
           <p><strong>Save screenshot</strong> captures the game's native framebuffer as a local PNG for troubleshooting. A fullscreen monitor does not increase its native pixel dimensions.</p>
           <p>The player maintains a 4:3 game viewport, with black bars where needed rather than stretching to 16:9.</p>
