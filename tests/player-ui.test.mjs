@@ -134,3 +134,26 @@ test('GTA file readiness is not blocked on loading remote emulator code', () => 
   assert.match(check, /await inspectGameFile\(file\)/);
   assert.match(script, /status\('Loading emulator code…', 'LOADING'\); await loadLibrary\(\)/);
 });
+
+
+test('saved shortcut hydration never blocks game file pickers on emulator CDN loading', () => {
+  const start = script.indexOf('loadPrivateShortcut().then(async record => {');
+  const end = script.indexOf("window.addEventListener('beforeunload'", start);
+  assert.ok(start >= 0 && end > start, 'saved shortcut initialization missing');
+  const init = script.slice(start, end);
+  assert.ok(!init.includes('await loadLibrary()'), 'must not download emulator during local shortcut check');
+  assert.ok(!init.includes('checkingSource = true'), 'must not disable Add game files while checking saved shortcut');
+  assert.ok(!init.includes('checkingSource = false'), 'must not modify file selection state');
+  assert.match(init, /await inspectJsdos\(record\.bundle\)/);
+  assert.match(init, /await inspectBundleEditions\(record\.bundle\)/);
+  assert.match(script, /button\.addEventListener\('click', \(\) => \{/);
+  assert.match(script, /picker\.click\(\)/);
+});
+test('forgetting a saved shortcut does not reference an undefined error', () => {
+  const start = script.indexOf("$('forget').addEventListener");
+  const end = script.indexOf('loadPrivateShortcut().then',start);
+  const section = script.slice(start,end);
+  const tryEnd = section.indexOf('} catch (error)');
+  assert.ok(tryEnd > 0);
+  assert.ok(!section.slice(0,tryEnd).includes("error.message"));
+});
