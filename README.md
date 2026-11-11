@@ -44,12 +44,20 @@ A GTA settings file called `GTADATA/PLAYER_A.DAT` holds an option corresponding 
 
 Original DOS versions do **not** gain native 1080p by changing browser canvas size or DOSBox's `fullresolution` parameter. If F11 does nothing, try the original game during actual gameplay and inspect the `Check GTA version` output rather than automatically forcing unsupported settings. References: [DOS game controls](https://gta.fandom.com/wiki/Controls_for_GTA_%281997_game%29), [GTA DOS executable variants](https://www.abandonware-france.org/ltf_abandon/ltf_jeu.php?id=803), and [GTA settings file format](https://misc.daniel-marschall.de/spiele/gta1/savegame.html).
 
+## 4:3-only display (desktop and fullscreen)
+
+The game display is now **locked to a classic 4:3 presentation** for **both GTA8.EXE and GTA24.EXE**, on the webpage and in fullscreen. The raw/unadjusted pixel-aspect toggle has been removed to avoid accidental squashing or stretching. Fullscreen now uses the browser's native Fullscreen API on the surrounding **4:3 stage**, not the js-dos fullscreen sizing path. On a widescreen Windows monitor (16:9 or ultrawide), the extra space stays **black on the left and right**. Press **Esc** to leave browser fullscreen.
+
+Both DOSBox render options and the outer game viewport are constrained to 4:3. Older VGA modes, especially 320×200 or 640×400, can have non-square original pixels; rendering those in a 4:3 presentation is intentional and does not change the game data or resolution. F11 still controls which internal GTA video mode is active, but the frontend **cannot remove native modes from the game's own list** without modifying its executable. What this change guarantees is that their **displayed proportions** remain 4:3. The native frame-size readout continues to report actual DOS framebuffer dimensions even when they are not numerically 4:3.
+
+No new .jsdos backup or ISO is needed for this 4:3 frontend correction. Game files and existing saves are unchanged. The behaviour should be checked on Windows Chrome/Edge with both GTA8 and GTA24, entering/exiting fullscreen and cycling F11 modes.
+
 ## Windows desktop player and display modes
 
 The default screen now shows the game first. There is **no promotional hero, ticker, side advertisement, or permanently open setup panel**. The `Game setup & advanced tools` drawer stays collapsed unless you need to import a personal file, edit DOS launch commands, or save/update your private one-click shortcut. No Rockstar game data is hosted by this site.
 
 Desktop graphics diagnostics (added in the next quality pass):
-- **Shape — CRT 4:3 / Raw pixels**: switch between js-dos's 4:3 CRT-corrected presentation and native uncorrected source-pixel aspect. DOS 320×200 VGA output can have non-square pixels; 4:3 remains the recommended default. The comparison changes only presentation, not the game video mode.
+- **Aspect ratio: 4:3 locked**: DOS and browser fullscreen both display GTA at 4:3. 16:9 stretching and the optional raw-pixel ratio have been removed; widescreen monitors get black side bars.
 - **Browser graphics renderer** under advanced settings: **WebGL** (default) or **Canvas** (fallback). Choose before launching. The renderer cannot be changed once an emulator session is running; end and relaunch to compare. This is intended for compatibility testing, not a guaranteed speed/quality improvement.
 - **Save screenshot**: export an unmodified native-frame PNG via the js-dos Command Interface. The file is generated locally and is not uploaded to the public repository or a backend. Share it in chat when diagnosing a visual issue. A screenshot size such as 640×480 describes the emulator's output; it is not proof of 1080p native game rendering.
 - **Screen mode (F11)** sends the original GTA DOS screen-mode key during gameplay; the exact behavior is edition-dependent, and the version can be checked with the new running-program diagnostic. Certain choices can fail depending on the edition or emulation. Keep a backup before experimenting. <https://www.gamesdatabase.org/Media/SYSTEM/Microsoft_DOS/manual/Formated/Grand_Theft_Auto.pdf>
@@ -58,7 +66,7 @@ Desktop controls:
 - **+ Add File** opens the local file picker. After the file structure and js-dos frontend load successfully, **Play GTA** becomes active. If you have a private saved shortcut, it can become ready without selecting another file.
 - **Picture: Sharp pixels** stays enabled to avoid the excessive blur from smooth interpolation. Aspect and backend preferences can still be remembered locally.
 - **GTA display menu (F11)** sends F11 into the running DOS game. This opens the game's own video mode selection (when supported by the edition). The `Native` readout displays the current emulator framebuffer dimensions as reported by js-dos.
-- **Fullscreen** uses js-dos fullscreen, while maintaining **4:3** proportions. Black bars on a widescreen monitor are expected. Avoid stretching the original graphics to 16:9.
+- **Fullscreen** uses the browser's fullscreen on the 4:3 game stage, rather than expanding the emulator root to 16:9. Black side bars on a widescreen monitor are expected. Press Esc to exit.
 - **Pause**, **End game**, and **Export save / backup** are always outside the hidden emulator UI. The embedded js-dos player runs in kiosk mode; its own sidebar is hidden to make gameplay the main surface.
 
 **Important:** Scaling a 320×200 or 640×480 frame to 1080p/1440p does not increase original art resolution. F11's available modes depend on GTA's DOS edition. Smooth filtering may look softer rather than sharper. No arbitrary 1080p DOS-mode patch, widescreen game modification or new high-resolution textures are included. Validate F11 and all gameplay controls on the actual installed game before calling it a game-quality improvement.
