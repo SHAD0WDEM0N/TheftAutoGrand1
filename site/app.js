@@ -1,10 +1,12 @@
 import { inspectGameFile, inspectJsdos, configuration, quickStartConfig, mobileBundleRisk } from './core.js';
 import { loadPrivateShortcut, savePrivateShortcut, clearPrivateShortcut } from './storage.js';
 import { inspectBundleEditions, bundleWithGameMode } from './editions.js';
+import { isGtaProgram, shouldMaskDosStartup } from './boot.js';
 const $ = (id) => document.getElementById(id);
 const CDN = 'https://cdn.jsdelivr.net/npm/js-dos@8.5.3/dist/';
 let player = null, ci = null, bundleUrl = null, busy = false, active = false, paused = false, timer;
 let libraryPromise, bundleToolsPromise, savedShortcut = null;
+let bootSplashTimer = null, bootPollTimer = null, bootSplashActive = false, bootSplashGeneration = 0;
 let selectedSource = null, savedSourceReady = false, fileWasChosen = false;
 let savedEditionInfo = null;
 function updateEditionOptions(source) {
@@ -90,6 +92,58 @@ function controls() {
   $('remember').disabled = busy || !ci || !$('quick-commands').value.trim();
   $('forget').disabled = busy || active || !savedShortcut;
 }
+function hideBootSplash() {
+  ++bootSplashGeneration;
+  clearTimeout(bootSplashTimer);
+  clearTimeout(bootPollTimer);
+  bootSplashActive = false;
+  $('boot-splash').hidden = true;
+}
+
+function showBootSplash() {
+  hideBootSplash();
+  bootSplashActive = true;
+  $('boot-message').textContent = 'The original DOS commands are running behind this screen.';
+  $('boot-splash').hidden = false;
+  const generation = bootSplashGeneration;
+  // Never trap the user behind a loading cover. They can always choose Show DOS.
+  bootSplashTimer = setTimeout(() => {
+    if (bootSplashActive && generation === bootSplashGeneration) {
+      hideBootSplash();
+      status('GTA startup was not detected. The DOS display is available for troubleshooting.', 'CHECK STARTUP');
+    }
+  }, 45000);
+}
+
+function watchGtaStartup() {
+  if (!bootSplashActive || !ci) return;
+  const generation = bootSplashGeneration;
+  const check = async () => {
+    if (!bootSplashActive || generation !== bootSplashGeneration || !ci) return;
+    try {
+      const program = await ci.getRunningProgram();
+      if (!bootSplashActive || generation !== bootSplashGeneration) return;
+      if (isGtaProgram(program)) {
+        $('boot-message').textContent = 'GTA is running. Opening the game…';
+        // Give the DOS game a moment to draw its title/menu, instead of revealing the DOS prompt.
+        bootPollTimer = setTimeout(() => {
+          if (bootSplashActive && generation === bootSplashGeneration) {
+            hideBootSplash();
+            status('GTA is running. The DOS startup screen was hidden; keyboard controls are ready.', 'GTA RUNNING');
+          }
+        }, 1000);
+        return;
+      }
+    } catch {
+      // Some builds temporarily cannot answer during DOS startup; continue polling.
+    }
+    if (bootSplashActive && generation === bootSplashGeneration) {
+      bootPollTimer = setTimeout(check, 750);
+    }
+  };
+  void check();
+}
+
 function loadLibrary() {
   if (window.Dos) return Promise.resolve();
   if (libraryPromise) return libraryPromise;
@@ -119,6 +173,7 @@ function bundleTools() {
   return bundleToolsPromise;
 }
 async function end() {
+  hideBootSplash();
   clearTimeout(timer);
   releaseHeldKeys();
   if (document.fullscreenElement === $('stage-frame')) {
@@ -163,6 +218,11 @@ async function launch(demo = false) {
       }
     }
     $('player').replaceChildren(); active = true; controls();
+    if (!demo && shouldMaskDosStartup(kind, sourceInfo?.editions?.boot, $('gta-edition').value)) {
+      showBootSplash();
+    } else {
+      hideBootSplash(); // Installer ISOs and unknown DOS startup scripts need a visible shell.
+    }
     player = window.Dos($('player'), {
       ...source, pathPrefix: CDN + 'emulators/', backend: 'dosbox', backendLocked: true,
       theme: 'dark', autoStart: true, countDownStart: 0, autoSave: false,
@@ -173,6 +233,7 @@ async function launch(demo = false) {
       onEvent(event, value) {
         if (event === 'ci-ready') {
           ci = value; clearTimeout(timer); controls();
+          if (bootSplashActive) watchGtaStartup();
           ci.events().onFrameSize((width, height) => { if (width > 0 && height > 0) $('video-mode').textContent = 'Native: ' + width + '×' + height; });
           status(demo ? 'DOS smoke test running. Look for “Emulator smoke test: OK” in the terminal.' : quick ? 'Starting your saved GTA shortcut. Click the game picture for keyboard control.' : 'DOS is running. Check the terminal for mount results, then install or launch your game.', 'DOS RUNNING');
           ci.events().onMessage((type, ...args) => {
@@ -241,6 +302,10 @@ $('game').addEventListener('change', () => {
 $('add-file').addEventListener('click', () => $('game').click());
 $('play').addEventListener('click', () => launch());
 $('demo').addEventListener('click', () => launch(true));
+$('show-dos').addEventListener('click', () => {
+  hideBootSplash();
+  status('DOS startup display revealed. This does not stop GTA; use this view if the game is waiting for input.', 'DOS VISIBLE');
+});
 $('quick-commands').addEventListener('input', controls);
 $('override-mobile').addEventListener('change', controls);
 $('pause').addEventListener('click', () => { paused = !paused; player.setPaused(paused); $('pause').textContent = paused ? 'Resume' : 'Pause'; });
