@@ -97,7 +97,7 @@ test('optional install retains a private local copy and never uploads files', ()
 test('quiet startup checkbox affects only the jsdos temporary boot config', () => {
   assert.ok(!html.includes('id="quiet-startup"'));
   assert.match(app, /const quiet = true/);
-  assert.match(app, /bundleWithGameMode\(file, edition, chosenMode, \{ quiet \}\)/);
+  assert.match(app, /bundleWithGameMode\(file, edition, chosenMode, \{ quiet, game: selectedGame \}\)/);
   assert.ok(!app.includes("$('quiet-startup')"));
 });
 
