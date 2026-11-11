@@ -312,7 +312,7 @@ async function launch(demo = false) {
     if (!demo && shouldMaskDosStartup(kind, sourceInfo?.editions?.boot, $('gta-edition').value)) {
       showBootSplash();
     } else {
-      hideBootSplash(); // Installer ISOs and unknown DOS startup scripts need a visible shell.
+      hideBootSplash(); // Installer ISOs need a visible shell for manual install commands.
     }
     player = window.Dos($('player'), {
       ...source, pathPrefix: CDN + 'emulators/', backend: 'dosbox', backendLocked: true,
