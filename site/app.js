@@ -900,11 +900,12 @@ $('save-progress').addEventListener('click', async () => {
   try {
     ci.pause(); suspended = true;
     const bytes = await ci.persist(false);
-    if (!bytes || !bytes.byteLength) throw new Error('DOSBox returned no backup data.');
+    if (!bytes || !(bytes.byteLength || bytes.size)) throw new Error('DOSBox returned no backup data.');
     const blob = new Blob([bytes], {type:'application/zip'});
-    const source = await inspectImportedBackup(Object.assign(blob, {name:backupLabels[game]+'.jsdos'}), game);
+    const named = new File([blob], backupLabels[game]+'.jsdos', {type:'application/zip'});
+    const source = await inspectImportedBackup(named, game);
     await saveGameBackup(game, blob);
-    const record = {bundle: blob, source, savedAt: Date.now()};
+    const record = {bundle: blob, source: {...source, file: blob}, savedAt: Date.now()};
     activateBackup(game, record);
     status('Saved ' + backupLabels[game] + ' filesystem backup locally. Export it if you want a portable copy. This is not an instant gameplay snapshot.', 'BACKUP SAVED');
   } catch (error) {
