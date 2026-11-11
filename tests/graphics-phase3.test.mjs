@@ -39,7 +39,9 @@ test('London optional private uploads live alongside GTA but not inside game ove
   assert.match(app, /verifyEditionBundle\(file, edition, editions\)/);
   assert.match(app,/if \(inspected\.kind !== 'jsdos'\)/);
   assert.match(app,/const sourceInfo = demo \? null : chosenGameSource\(\)/);
-  assert.match(app,/const chosenMode = \$\('game-edition'\)\.value === 'gta' \? \$\('gta-edition'\)\.value : 'auto'/);
+  assert.match(app,/const chosenMode = \$\('gta-edition'\)\.value/);
+  assert.match(app,/bundleWithGameMode\(file, edition, chosenMode, \{ quiet, game: selectedGame \}\)/);
+  assert.match(app,/updateEditionOptions\(chosenGameSource\(\)\)/);
   assert.ok(!html.includes('src="london69.jsdos"'));
 });
 test('automatic boot preferences remain fixed and raw DOS troubleshooting stays available', () => {
@@ -49,4 +51,17 @@ test('automatic boot preferences remain fixed and raw DOS troubleshooting stays 
   assert.match(app,/enabled: true,/);
   assert.match(html,/id="show-dos"/);
   assert.match(html,/id="skip-video-probe"/);
+});
+
+
+test('each game edition has its own DOS executable choice, while post-processing is independent', () => {
+  assert.match(app, /selectedGraphicsByGame = \{gta: 'auto', london69: 'auto', london61: 'auto'\}/);
+  assert.match(app, /selectedGraphicsByGame\[\$\('game-edition'\)\.value\] = \$\('gta-edition'\)\.value/);
+  assert.match(app, /8-bit · GTA8_UK\.EXE/);
+  assert.match(app, /24-bit · GTA24_UK\.EXE/);
+  assert.match(app, /24-bit · GTA24_61\.EXE/);
+  assert.match(app, /inspectLondonGraphicsModes\(file, edition, inspectedEditions\)/);
+  assert.match(app, /activeGameEdition === 'london69'/);
+  assert.match(html, /id="graphics-startup"/);
+  assert.match(html, /id="gta-edition"/);
 });
