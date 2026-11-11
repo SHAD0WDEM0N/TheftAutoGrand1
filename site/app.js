@@ -18,6 +18,7 @@ let scaleImage = null, scaleWidth = 0, scaleHeight = 0, scaleLastPaint = 0, scal
 let gpuRenderer = null, gpuLastFrame = 0, gpuUnavailable = false;
 const londonSources = { london69: null, london61: null };
 const backupSources = {gta: null, london69: null, london61: null};
+const useBackupByGame = {gta: true, london69: true, london61: true};
 const backupLabels = {gta:'GTA-1997',london69:'London-1969',london61:'London-1961'};
 let backupChecking = false;
 function backupSlot() { return $('backup-game').value; }
@@ -26,7 +27,8 @@ function updateBackupStatus() {
   const record = backupSources[game];
   $('backup-status').textContent = record
     ? 'Latest ' + backupLabels[game] + ' backup: ' + new Date(record.savedAt).toLocaleString() +
-      ' (' + (record.bundle.size / 1048576).toFixed(1) + ' MiB). Next Play uses this backup.'
+      ' (' + (record.bundle.size / 1048576).toFixed(1) + ' MiB). ' +
+      (useBackupByGame[game] ? 'Next Play uses this backup.' : 'A newly uploaded game file is selected instead.')
     : 'No backup for ' + backupLabels[game] + '. Import one or save during gameplay.';
 }
 
@@ -40,7 +42,7 @@ function setUploadProgress(edition, progress) {
 }
 function chosenGameSource() {
   const edition = $('game-edition').value;
-  if (backupSources[edition]) return backupSources[edition].source;
+  if (useBackupByGame[edition] && backupSources[edition]) return backupSources[edition].source;
   if (edition === 'gta') return playableSource();
   if (edition === 'london69' && playableSource()) return londonSources.london69;
   if (edition === 'london61' && playableSource() && londonSources.london69) return londonSources.london61;
@@ -500,6 +502,8 @@ async function launch(demo = false) {
       const startBundle = await bundleWithGameMode(file, edition, chosenMode, { quiet, game: selectedGame });
       activeGameEdition = selectedGame;
       activeDosMode = chosenMode;
+      $('backup-game').value = selectedGame;
+      updateBackupStatus();
       bundleUrl = URL.createObjectURL(startBundle);
       source.url = bundleUrl;
       status((chosenMode === 'auto'
@@ -593,6 +597,7 @@ async function checkAddedFile(file) {
       if (generation !== checkGeneration) return;
     }
     selectedSource = { file, kind: info.kind, from: 'file', editions };
+    useBackupByGame.gta = false;
     setUploadProgress('gta', {state: 'ready', message: 'Verified ' + file.name + ' (ZIP/DOS structure; gameplay not tested)'});
     updateEditionOptions(selectedSource);
     updateGameEditions();
@@ -629,6 +634,7 @@ async function checkLondonBundle(edition, file) {
     const verification = await verifyEditionBundle(file, edition, inspectedEditions);
     const editions = await inspectLondonGraphicsModes(file, edition, inspectedEditions);
     londonSources[edition] = { file, kind: 'jsdos', from: 'london', editions, verification };
+    useBackupByGame[edition] = false;
     setUploadProgress(edition, {state: 'ready', message: 'Verified ' + file.name + ' (' + verification.fileCount + ' entries; gameplay not tested)'});
     $(statusId).textContent = 'Verified ' + file.name + ' (' + verification.fileCount + ' ZIP entries). ' +
       verification.note + ' Gameplay still requires testing.';
@@ -871,6 +877,7 @@ async function inspectImportedBackup(file, game) {
 }
 function activateBackup(game, record) {
   backupSources[game] = record;
+  useBackupByGame[game] = true;
   updateGameEditions();
   if ($('game-edition').querySelector('[value="' + game + '"]')?.disabled === false) {
     $('game-edition').value = game;
@@ -940,7 +947,10 @@ $('backup-file').addEventListener('change', async () => {
   try {
     const source = await inspectImportedBackup(file, game);
     if (!confirm('Import ' + file.name + ' as the latest ' + backupLabels[game] +
-      ' backup? This replaces the previous local backup for that game. It does not resume at an exact frame.')) return;
+      ' backup? This replaces the previous local backup for that game. It does not resume at an exact frame.')) {
+      status('Backup import cancelled. Existing local backups were not changed.', 'IMPORT CANCELLED');
+      return;
+    }
     const blob = new Blob([file], {type:'application/zip'});
     await saveGameBackup(game, blob);
     const storedSource = {...source, file: blob};
