@@ -1,14 +1,35 @@
 import { inspectGameFile, inspectJsdos, configuration, quickStartConfig, mobileBundleRisk } from './core.js';
 import { loadPrivateShortcut, savePrivateShortcut, clearPrivateShortcut } from './storage.js';
+import { inspectBundleEditions, bundleWithGameMode } from './editions.js';
 const $ = (id) => document.getElementById(id);
 const CDN = 'https://cdn.jsdelivr.net/npm/js-dos@8.5.3/dist/';
 let player = null, ci = null, bundleUrl = null, busy = false, active = false, paused = false, timer;
 let libraryPromise, bundleToolsPromise, savedShortcut = null;
 let selectedSource = null, savedSourceReady = false, fileWasChosen = false;
+let savedEditionInfo = null;
+function updateEditionOptions(source) {
+  const panel = $('edition-panel');
+  const select = $('gta-edition');
+  const note = $('edition-note');
+  const editions = source?.editions;
+  select.value = 'auto';
+  for (const option of select.options) {
+    if (option.value === 'auto') continue;
+    option.disabled = !editions?.available?.includes(option.value);
+  }
+  panel.hidden = !source || source.kind !== 'jsdos';
+  if (!editions || source?.kind !== 'jsdos') {
+    note.textContent = 'Select a private .jsdos bundle to inspect its game executables.';
+  } else {
+    const found = editions.detected.map(mode => mode === 'gta8' ? 'GTA8.EXE' : 'GTA24.EXE');
+    note.textContent = 'Detected: ' + (found.join(' and ') || 'no directly visible GTA executables') +
+      '. ' + editions.note + ' 3dfx needs a separately tested Glide-ready setup.';
+  }
+}
 let checkingSource = false, checkGeneration = 0;
 function playableSource() {
   if (fileWasChosen) return selectedSource;
-  if (savedSourceReady && savedShortcut?.bundle) return { file: savedShortcut.bundle, kind: 'jsdos', from: 'saved' };
+  if (savedSourceReady && savedShortcut?.bundle) return { file: savedShortcut.bundle, kind: 'jsdos', from: 'saved', editions: savedEditionInfo };
   return null;
 }
 function showFileState(message, state = 'empty') {
@@ -61,6 +82,7 @@ function controls() {
   $('screenshot').disabled = busy || !ci;
   $('render-backend').disabled = busy || active;
   $('game').disabled = busy || active || checkingSource;
+  $('gta-edition').disabled = busy || active || checkingSource;
   $('play').disabled = busy || active || checkingSource || !playableSource()
     || mobileNeedsOverride(playableSource()?.from === 'saved');
   $('demo').disabled = busy || active;
@@ -120,7 +142,19 @@ async function launch(demo = false) {
     }
     status('Loading emulator code…', 'LOADING'); await loadLibrary();
     const source = {};
-    if (kind === 'jsdos') { bundleUrl = URL.createObjectURL(file); source.url = bundleUrl; }
+    if (kind === 'jsdos') {
+      const chosenMode = $('gta-edition').value;
+      const edition = sourceInfo.editions;
+      if (chosenMode !== 'auto' && !edition?.available?.includes(chosenMode)) {
+        throw new Error('This GTA graphics edition is not verified as available in the selected game bundle.');
+      }
+      const startBundle = chosenMode === 'auto' ? file : await bundleWithGameMode(file, edition, chosenMode);
+      bundleUrl = URL.createObjectURL(startBundle);
+      source.url = bundleUrl;
+      status(chosenMode === 'auto'
+        ? 'Starting with the original DOS startup configuration.'
+        : 'Starting selected ' + (chosenMode === 'gta24' ? 'high-colour GTA24.EXE' : 'standard GTA8.EXE') + ' configuration.', 'STARTING');
+    }
     else {
       source.dosboxConf = configuration(kind === 'iso', $('commands').value);
       if (kind === 'iso') {
@@ -169,6 +203,7 @@ async function checkAddedFile(file) {
   fileWasChosen = true;
   checkingSource = true;
   selectedSource = null;
+  updateEditionOptions(null);
   $('override-mobile').checked = false;
   $('file-info').textContent = file.name + ' · ' + (file.size / 1048576).toFixed(1) + ' MiB';
   showFileState('Checking ' + file.name + '…', 'checking');
@@ -181,7 +216,13 @@ async function checkAddedFile(file) {
     status('Preparing DOS emulator scripts and renderer assets…', 'PREPARING');
     await loadLibrary();
     if (generation !== checkGeneration) return;
-    selectedSource = { file, kind: info.kind, from: 'file' };
+    let editions = null;
+    if (info.kind === 'jsdos') {
+      editions = await inspectBundleEditions(file);
+      if (generation !== checkGeneration) return;
+    }
+    selectedSource = { file, kind: info.kind, from: 'file', editions };
+    updateEditionOptions(selectedSource);
     showFileState('Ready to start: ' + file.name + ' (' + info.kind.toUpperCase() + '). Game launch not yet tested.', 'ready');
     status(info.description + ' Press Play GTA to start.', 'FILE READY');
     updateMobileNotice();
@@ -357,6 +398,8 @@ $('remember').addEventListener('click', async () => {
     savedSourceReady = true;
     fileWasChosen = false;
     selectedSource = null;
+    savedEditionInfo = await inspectBundleEditions(bundle);
+    updateEditionOptions({ kind: 'jsdos', editions: savedEditionInfo });
     $('game').value = '';
     $('file-info').textContent = 'Saved private game will be used on your next launch.';
     $('quick-info').textContent = 'Saved local copy ready; your game files stay on your PC.';
@@ -377,6 +420,8 @@ $('forget').addEventListener('click', async () => {
     await clearPrivateShortcut();
     savedShortcut = null;
     savedSourceReady = false;
+    savedEditionInfo = null;
+    if (!fileWasChosen) updateEditionOptions(null);
     $('quick-info').textContent = 'No saved game stored in this browser.';
     if (!fileWasChosen) showFileState('Add your own ISO or .jsdos file to begin.', 'empty');
     updateMobileNotice();
@@ -397,16 +442,19 @@ loadPrivateShortcut().then(async record => {
   try {
     await inspectJsdos(record.bundle);
     await loadLibrary();
+    savedEditionInfo = await inspectBundleEditions(record.bundle);
     savedSourceReady = true;
     $('quick-commands').value = record.commands || '';
     $('quick-info').textContent = 'Private saved game found on this browser.';
     if (!fileWasChosen) {
+      updateEditionOptions({kind:'jsdos', editions:savedEditionInfo});
       showFileState('Saved game ready. Press Play GTA.', 'ready');
       status('Saved game bundle checked. Game execution is not yet verified for this session.', 'FILE READY');
       updateMobileNotice();
     }
   } catch (error) {
     savedSourceReady = false;
+    savedEditionInfo = null;
     $('quick-info').textContent = 'Saved game needs attention: ' + error.message;
     if (!fileWasChosen) showFileState('Saved copy could not be checked. Add a game file instead.', 'error');
   } finally {
