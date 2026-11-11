@@ -104,6 +104,188 @@ export function patchQuietBoot(conf) {
   return before + additions.join(newline) + separator + autoexec.commands + autoexec.after;
 }
 
+
+/**
+ * London DOS editions have their own executables, independent from the
+ * base GTA8/GTA24 names. Only advertise an executable actually in the ZIP.
+ * The 3dfx variant needs Glide emulation and is deliberately not offered.
+ */
+export async function inspectLondonGraphicsModes(file, game, inspection) {
+  if (game !== 'london69' && game !== 'london61') throw new Error('Unsupported London game.');
+  const index = await readZipIndex(file);
+  const paths = new Set(index.entries.map(e => nameOf(e.name)));
+  const executableModes = game === 'london69'
+    ? { gta8: 'GTADOS/GTA8_UK.EXE', gta24: 'GTADOS/GTA24_UK.EXE' }
+    : { gta24: 'GTADOS/GTA24_61.EXE' };
+  const available = ['auto'];
+  for (const [mode, path] of Object.entries(executableModes)) {
+    if (paths.has(path)) available.push(mode);
+  }
+  return {
+    ...inspection,
+    available,
+    graphicsGame: game,
+    boot: 'unknown',
+    note: game === 'london69'
+      ? 'London 1969 has separate 8-bit and 24-bit DOS executables. Select a graphics edition before Play.'
+      : 'London 1961 includes a 24-bit DOS executable; no 8-bit edition is present in this bundle.'
+  };
+}
+
+/**
+ * Replace only the London batch call in the temporary DOSBox config with
+ * the chosen edition's direct executable command. The original .jsdos
+ * and its batch files stay intact; the proven 8-bit batch launch remains
+ * unchanged when mode=auto.
+ */
+export function patchLondonAutoexec(conf, game, mode) {
+  if (game !== 'london69' && game !== 'london61') throw new Error('Unsupported London game.');
+  const target = game === 'london69'
+    ? { gta8: 'gta8_uk.exe', gta24: 'gta24_uk.exe -nounivbe' }[mode]
+    : { gta24: 'gta24_61.exe -nounivbe' }[mode];
+  if (!target) throw new Error('Graphics edition is not supported for this London game.');
+  const batch = game === 'london69' ? 'london.bat' : 'london61.bat';
+  const autoexec = dosboxAutoexec(conf);
+  if (!autoexec) throw new Error('No DOSBox startup commands found.');
+  const newline = conf.includes('\r\n') ? '\r\n' : '\n';
+  const lines = autoexec.commands.split(/\r?\n/);
+  let found = 0;
+  const updated = lines.map(line => {
+    const trimmed = line.trim();
+    if (/^(?:rem\b|::|#)/i.test(trimmed)) return line;
+    if (new RegExp('^(?:call\\s+)?'+batch.replace('.', '\\.')+'(?:\\s*) the original 750+ MB bundle
+// is not loaded as one huge ArrayBuffer. The old ZIP central directory remains inert
+// and a new ZIP central directory is appended after a replacement DOSBox config entry.
+export async function bundleWithGameMode(file, inspection, mode, { quiet = false, game = 'gta' } = {}) {
+  if (mode === 'auto' && !quiet) return file;
+  if (mode !== 'auto' && !inspection?.available?.includes(mode)) throw new Error('This game mode is not available in the selected bundle.');
+  if (typeof inspection?.config !== 'string') {
+    if (mode === 'auto') return file; // Preserve working unknown archive layout.
+    throw new Error('DOSBox startup configuration could not be inspected.');
+  }
+  const variantConf = mode === 'auto' ? inspection.config
+    : game === 'gta' ? patchAutoexecGame(inspection.config, mode)
+      : patchLondonAutoexec(inspection.config, game, mode);
+  const newConf = quiet ? patchQuietBoot(variantConf) : variantConf;
+  if (newConf === inspection.config) return file;
+  const zip = await readZipIndex(file);
+  const entry = zip.entries.find(e => nameOf(e.name) === CONFIG_PATH.toUpperCase());
+  if (!entry) throw new Error('DOSBox configuration not found in the bundle.');
+
+  const name = textEncoder.encode(entry.name);
+  const bytes = textEncoder.encode(newConf);
+  if (file.size + bytes.length + zip.directory.length > 0xffffffff)
+    throw new Error('This bundle is too large for a standard ZIP patch.');
+  const crc = crc32(bytes);
+  const local = new Uint8Array(30 + name.length);
+  const lv = new DataView(local.buffer);
+  lv.setUint32(0, 0x04034b50, true);
+  lv.setUint16(4, 20, true);
+  lv.setUint16(8, 0, true); // store, no compression
+  lv.setUint32(14, crc, true);
+  lv.setUint32(18, bytes.length, true);
+  lv.setUint32(22, bytes.length, true);
+  lv.setUint16(26, name.length, true);
+  local.set(name, 30);
+
+  const centralParts = zip.entries.filter(e => e !== entry).map(e => zip.directory.slice(e.dirStart, e.dirEnd));
+  const centralNew = new Uint8Array(46 + name.length);
+  const cv = new DataView(centralNew.buffer);
+  cv.setUint32(0, 0x02014b50, true);
+  cv.setUint16(4, 20, true);
+  cv.setUint16(6, 20, true);
+  cv.setUint32(16, crc, true);
+  cv.setUint32(20, bytes.length, true);
+  cv.setUint32(24, bytes.length, true);
+  cv.setUint16(28, name.length, true);
+  cv.setUint32(42, file.size, true);
+  centralNew.set(name, 46);
+
+  const dirOffset = file.size + local.length + bytes.length;
+  const dirSize = centralParts.reduce((size, piece) => size + piece.length, centralNew.length);
+  const count = centralParts.length + 1;
+  const end = new Uint8Array(22);
+  const ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, count, true);
+  ev.setUint16(10, count, true);
+  ev.setUint32(12, dirSize, true);
+  ev.setUint32(16, dirOffset, true);
+  return new Blob([file, local, bytes, ...centralParts, centralNew, end], { type: 'application/zip' });
+}
+
+async function readTextEntry(file, entry) {
+  if (entry.uncompressedSize > 256 * 1024 || entry.compressedSize > 256 * 1024)
+    throw new Error('DOSBox config is unexpectedly large.');
+  const header = new DataView(await file.slice(entry.localOffset, entry.localOffset + 30).arrayBuffer());
+  if (header.byteLength < 30 || header.getUint32(0, true) !== 0x04034b50)
+    throw new Error('Damaged ZIP entry for DOSBox config.');
+  const start = entry.localOffset + 30 + header.getUint16(26, true) + header.getUint16(28, true);
+  const packed = file.slice(start, start + entry.compressedSize);
+  if (entry.method === 0) return textDecoder.decode(await packed.arrayBuffer());
+  if (entry.method !== 8) throw new Error('Unsupported ZIP compression for config.');
+  if (typeof DecompressionStream !== 'function') throw new Error('This browser cannot decompress ZIP configuration entries.');
+  return textDecoder.decode(await new Response(packed.stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+}
+
+export async function readZipIndex(file) {
+  if (file.size < 22) throw new Error('Incomplete ZIP archive.');
+  const tailSize = Math.min(file.size, 65557);
+  const tail = new DataView(await file.slice(file.size - tailSize).arrayBuffer());
+  let eocd = -1;
+  for (let p = tail.byteLength - 22; p >= 0; p--) {
+    if (tail.getUint32(p, true) === 0x06054b50
+        && p + 22 + tail.getUint16(p + 20, true) === tail.byteLength) { eocd = p; break; }
+  }
+  if (eocd < 0) throw new Error('ZIP end-of-directory record not found.');
+  const count = tail.getUint16(eocd + 10, true);
+  const dirSize = tail.getUint32(eocd + 12, true);
+  const dirOffset = tail.getUint32(eocd + 16, true);
+  if (!count || count === 65535 || dirOffset === 0xffffffff || dirSize > 8 * 1024 * 1024
+      || dirOffset + dirSize > file.size) throw new Error('Unsupported ZIP index.');
+  const directory = new Uint8Array(await file.slice(dirOffset, dirOffset + dirSize).arrayBuffer());
+  const view = new DataView(directory.buffer);
+  const entries = [];
+  let cursor = 0;
+  for (let i = 0; i < count; i++) {
+    if (cursor + 46 > directory.length || view.getUint32(cursor, true) !== 0x02014b50)
+      throw new Error('Damaged ZIP central directory.');
+    const length = view.getUint16(cursor + 28, true);
+    const extra = view.getUint16(cursor + 30, true);
+    const comment = view.getUint16(cursor + 32, true);
+    const end = cursor + 46 + length + extra + comment;
+    if (end > directory.length) throw new Error('Truncated ZIP entry.');
+    entries.push({
+      name: textDecoder.decode(directory.subarray(cursor + 46, cursor + 46 + length)),
+      method: view.getUint16(cursor + 10, true),
+      compressedSize: view.getUint32(cursor + 20, true),
+      uncompressedSize: view.getUint32(cursor + 24, true),
+      localOffset: view.getUint32(cursor + 42, true),
+      dirStart: cursor, dirEnd: end
+    });
+    cursor = end;
+  }
+  return { entries, directory };
+}
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let j = 0; j < 8; j++) crc = crc >>> 1 ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+, 'i').test(trimmed)) {
+      found++;
+      return ['cd gtados', target, 'cd ..'].join(newline);
+    }
+    return line;
+  });
+  if (found !== 1) throw new Error('Expected exactly one '+batch+' startup command.');
+  return autoexec.before + updated.join(newline) + autoexec.after;
+}
+
 // The patched archive is assembled using Blob slices: the original 750+ MB bundle
 // is not loaded as one huge ArrayBuffer. The old ZIP central directory remains inert
 // and a new ZIP central directory is appended after a replacement DOSBox config entry.
