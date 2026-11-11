@@ -6,8 +6,8 @@
   <meta name="description" content="Play your personally owned 1997 GTA DOS game in a browser. Game files remain on your device.">
   <meta name="theme-color" content="#0d0f0f">
   <title>Grand Theft Auto (1997) · DOS Player</title>
-  <link rel="stylesheet" href="./style.css">
-  <script type="module" src="./app.js"></script>
+  <link rel="stylesheet" href="./style.css?v=london-modes-20261111b">
+  <script type="module" src="./app.js?v=london-modes-20261111b"></script>
 </head>
 <body>
   <a class="skip" href="#player">Skip to game</a>
@@ -57,6 +57,16 @@
               <option value="london69" disabled>London 1969 — add bundle below</option>
               <option value="london61" disabled>London 1961 — add bundle below</option>
             </select>
+            <div id="edition-panel" class="edition-panel" hidden>
+              <label for="gta-edition">Graphics edition</label>
+              <select id="gta-edition" aria-label="Choose installed GTA DOS executable">
+                <option value="auto">Original (bundle default)</option>
+                <option value="gta8" disabled>Standard · GTA8.EXE</option>
+                <option value="gta24" disabled>High Colour · GTA24.EXE</option>
+                <option value="3dfx" disabled>3dfx Glide · experimental (not configured)</option>
+              </select>
+              <p id="edition-note">Available modes appear after checking the selected bundle.</p>
+            </div>
             <button id="play" type="button" class="play-button" disabled>▶ Play GTA</button>
             <details id="add-file-menu" class="add-file-menu">
               <summary id="add-file" class="load-button">+ Add game files <span aria-hidden="true">▾</span></summary>
@@ -72,16 +82,6 @@
               <p id="london61-upload-state">Mission Pack 2 (1961): No file selected</p>
             </div>
             <button id="install-local" type="button" class="local-install" disabled hidden>Remember this game on this PC</button>
-            <div id="edition-panel" class="edition-panel" hidden>
-              <label for="gta-edition">Graphics edition</label>
-              <select id="gta-edition" aria-label="Choose installed GTA DOS executable">
-                <option value="auto">Original (bundle default)</option>
-                <option value="gta8" disabled>Standard · GTA8.EXE</option>
-                <option value="gta24" disabled>High Colour · GTA24.EXE</option>
-                <option value="3dfx" disabled>3dfx Glide · experimental (not configured)</option>
-              </select>
-              <p id="edition-note">Available modes appear after checking the selected bundle.</p>
-            </div>
             <div id="source-info" class="source-info" data-state="empty" role="status" aria-live="polite">
               <span class="source-dot" aria-hidden="true"></span>
               <span id="source-detail">Add your own ISO or .jsdos file to begin.</span>
