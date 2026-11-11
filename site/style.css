@@ -371,3 +371,92 @@ textarea { background: #0c1113; color: var(--text); border: 1px solid var(--stro
 .boot-actions .boot-show-dos:disabled {
   opacity: .48;
 }
+
+
+/* Collapsible GTA 1997 default keyboard guide, below the player controls. */
+.keyboard-guide {
+  max-width: 1450px;
+  margin: 12px auto 0;
+  border: 1px solid #3b5b59;
+  background: #152025;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.keyboard-guide > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  cursor: pointer;
+  padding: 12px 16px;
+  list-style: none;
+}
+.keyboard-guide > summary::-webkit-details-marker { display: none; }
+.keyboard-guide > summary::after {
+  content: "▾";
+  color: var(--accent-orange);
+  font-size: 17px;
+  margin-left: auto;
+}
+.keyboard-guide[open] > summary::after { content: "▴"; }
+.keyboard-guide-heading {
+  font-size: 13px;
+  font-weight: 750;
+  color: #e7f9f3;
+}
+.keyboard-guide-summary {
+  color: var(--muted);
+  font-size: 11px;
+}
+.keyboard-guide-intro,
+.keyboard-guide-note {
+  padding: 0 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.keyboard-guide-intro { margin: 2px 0 13px; }
+.keyboard-guide-note { margin: 14px 0 16px; }
+.keyboard-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 16px;
+}
+.keyboard-guide-section {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #304447;
+  border-radius: 5px;
+  background: #101a1f;
+}
+.keyboard-guide-section h2 {
+  margin: 0 0 9px;
+  color: var(--accent-gold);
+  font-size: 13px;
+}
+.keyboard-guide-section dl { margin: 0; }
+.keyboard-guide-section dl > div {
+  display: grid;
+  grid-template-columns: minmax(85px, 35%) minmax(0, 1fr);
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid #263438;
+  align-items: baseline;
+  font-size: 12px;
+}
+.keyboard-guide-section dt {
+  color: #a5eee4;
+  font-weight: 700;
+  font-family: ui-monospace, Consolas, monospace;
+}
+.keyboard-guide-section dd {
+  margin: 0;
+  color: #d0d9db;
+}
+@media (max-width: 850px) {
+  .keyboard-guide-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 570px) {
+  .keyboard-guide-summary { display: none; }
+  .keyboard-guide-section dl > div { grid-template-columns: 98px minmax(0, 1fr); }
+}
