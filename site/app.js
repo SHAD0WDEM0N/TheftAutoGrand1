@@ -1,12 +1,13 @@
 import { inspectGameFile, inspectJsdos, configuration, quickStartConfig, mobileBundleRisk } from './core.js';
 import { loadPrivateShortcut, savePrivateShortcut, clearPrivateShortcut } from './storage.js';
 import { inspectBundleEditions, bundleWithGameMode } from './editions.js';
-import { isGtaProgram, shouldMaskDosStartup } from './boot.js';
+import { isGtaProgram, shouldMaskDosStartup, looksLikeGameFrame } from './boot.js';
 const $ = (id) => document.getElementById(id);
 const CDN = 'https://cdn.jsdelivr.net/npm/js-dos@8.5.3/dist/';
 let player = null, ci = null, bundleUrl = null, busy = false, active = false, paused = false, timer;
 let libraryPromise, bundleToolsPromise, savedShortcut = null;
 let bootSplashTimer = null, bootPollTimer = null, bootSplashActive = false, bootSplashGeneration = 0;
+let bootLastFrameCheck = 0, bootGraphicFrames = 0;
 let selectedSource = null, savedSourceReady = false, fileWasChosen = false;
 let savedEditionInfo = null;
 function updateEditionOptions(source) {
@@ -76,6 +77,9 @@ function status(message, badge) { $('status').textContent = message; if (badge) 
 function controls() {
   $('player').closest('.game-window').classList.toggle('is-playing', active);
   $('add-file').disabled = busy || active || checkingSource;
+  const canInstall = !busy && !active && !checkingSource && selectedSource?.from === 'file' && selectedSource.kind === 'jsdos';
+  $('install-local').hidden = !selectedSource || selectedSource.kind !== 'jsdos' || selectedSource.from !== 'file';
+  $('install-local').disabled = !canInstall;
   $('native-resolution').disabled = busy || !ci;
   $('inspect-program').disabled = busy || !ci;
   $('screenshot').disabled = busy || !ci;
@@ -94,6 +98,8 @@ function controls() {
 }
 function hideBootSplash() {
   ++bootSplashGeneration;
+  bootGraphicFrames = 0;
+  bootLastFrameCheck = 0;
   clearTimeout(bootSplashTimer);
   clearTimeout(bootPollTimer);
   bootSplashActive = false;
@@ -103,16 +109,40 @@ function hideBootSplash() {
 function showBootSplash() {
   hideBootSplash();
   bootSplashActive = true;
-  $('boot-message').textContent = 'The original DOS commands are running behind this screen.';
+  $('boot-message').textContent = 'The game is loading behind the scenes. DOS startup stays hidden.';
   $('boot-splash').hidden = false;
   const generation = bootSplashGeneration;
-  // Never trap the user behind a loading cover. They can always choose Show DOS.
+  // Do not automatically reveal the DOS text after a fixed timeout. Keep the
+  // troubleshooting buttons visible and explain how to reveal either view.
   bootSplashTimer = setTimeout(() => {
     if (bootSplashActive && generation === bootSplashGeneration) {
-      hideBootSplash();
-      status('GTA startup was not detected. The DOS display is available for troubleshooting.', 'CHECK STARTUP');
+      $('boot-message').textContent = 'Startup is taking longer than expected. Try Show game, or Show DOS if the game needs input.';
+      status('GTA has not been confirmed visually. Choose Show game or Show DOS to investigate.', 'CHECK STARTUP');
     }
-  }, 45000);
+  }, 12000);
+}
+
+
+function watchGtaFrames(commandInterface) {
+  if (!bootSplashActive) return;
+  const generation = bootSplashGeneration;
+  commandInterface.events().onFrame((rgb, rgba) => {
+    if (!bootSplashActive || generation !== bootSplashGeneration) return;
+    const now = Date.now();
+    if (now - bootLastFrameCheck < 300) return;
+    bootLastFrameCheck = now;
+    const width = commandInterface.width();
+    const height = commandInterface.height();
+    if (looksLikeGameFrame(rgb, rgba, width, height)) {
+      bootGraphicFrames++;
+    } else {
+      bootGraphicFrames = 0;
+    }
+    if (bootGraphicFrames >= 2) {
+      hideBootSplash();
+      status('Game graphics detected. DOS startup was kept hidden.', 'GAME VISIBLE');
+    }
+  });
 }
 
 function watchGtaStartup() {
@@ -233,7 +263,7 @@ async function launch(demo = false) {
       onEvent(event, value) {
         if (event === 'ci-ready') {
           ci = value; clearTimeout(timer); controls();
-          if (bootSplashActive) watchGtaStartup();
+          if (bootSplashActive) { watchGtaFrames(ci); watchGtaStartup(); }
           ci.events().onFrameSize((width, height) => { if (width > 0 && height > 0) $('video-mode').textContent = 'Native: ' + width + '×' + height; });
           status(demo ? 'DOS smoke test running. Look for “Emulator smoke test: OK” in the terminal.' : quick ? 'Starting your saved GTA shortcut. Click the game picture for keyboard control.' : 'DOS is running. Check the terminal for mount results, then install or launch your game.', 'DOS RUNNING');
           ci.events().onMessage((type, ...args) => {
@@ -304,7 +334,38 @@ $('play').addEventListener('click', () => launch());
 $('demo').addEventListener('click', () => launch(true));
 $('show-dos').addEventListener('click', () => {
   hideBootSplash();
-  status('DOS startup display revealed. This does not stop GTA; use this view if the game is waiting for input.', 'DOS VISIBLE');
+  status('DOS view revealed for troubleshooting. The game keeps running in the background.', 'DOS VISIBLE');
+});
+$('show-game').addEventListener('click', () => {
+  hideBootSplash();
+  status('Game screen revealed manually. If it is still at a DOS prompt, use the game's startup commands to investigate.', 'GAME DISPLAY');
+});
+$('install-local').addEventListener('click', async () => {
+  const source = selectedSource;
+  if (!source || source.kind !== 'jsdos' || source.from !== 'file') return;
+  if (savedShortcut && !confirm('Replace the previous browser-saved GTA copy? Export an independent backup first if it contains progress.')) return;
+  busy = true; controls();
+  try {
+    status('Saving your .jsdos game privately in this browser. Large game files may exceed browser storage limits…', 'INSTALLING');
+    await savePrivateShortcut(source.file, '');
+    savedShortcut = { bundle: source.file, commands: '', savedAt: Date.now() };
+    savedEditionInfo = source.editions;
+    savedSourceReady = true;
+    fileWasChosen = false;
+    selectedSource = null;
+    $('game').value = '';
+    $('file-info').textContent = 'Game saved in this browser. Keep your original Datafile.jsdos as backup.';
+    $('quick-info').textContent = 'Installed privately on this PC. Open the site and press Play GTA next time.';
+    updateEditionOptions({ kind: 'jsdos', editions: savedEditionInfo });
+    showFileState('GTA is ready to play from this browser. No file picker needed next visit.', 'ready');
+    updateMobileNotice();
+    status('Private game installation saved. Your original game file was not changed or uploaded.', 'GAME INSTALLED');
+  } catch (error) {
+    status('Could not save the local game: ' + error.message + '. You can still play the selected file normally.', 'STORAGE ERROR');
+  } finally {
+    busy = false;
+    controls();
+  }
 });
 $('quick-commands').addEventListener('input', controls);
 $('override-mobile').addEventListener('change', controls);
