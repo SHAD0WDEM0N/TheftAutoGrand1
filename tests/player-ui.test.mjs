@@ -63,7 +63,10 @@ test('video diagnostics are wired to supported live and start-only js-dos operat
 
 test('single Play CTA is disabled until a local file has passed preflight', () => {
   assert.match(html, /<button id="play"[^>]*disabled>▶ Play GTA<\/button>/);
-  assert.match(html, /<button id="add-file"[^>]*>\+ Add File<\/button>/);
+  assert.match(html, /<select id="add-file"[^>]*>/);
+  assert.match(html, /<option value="gta">Add GTA Data File<\/option>/);
+  assert.match(html, /<option value="london69">Add Mission Pack 1 Data File/);
+  assert.match(html, /<option value="london61">Add Mission Pack 2 Data File/);
   assert.match(script, /\$\('play'\)\.disabled = busy \|\| active \|\| checkingSource \|\| londonChecking \|\| !chosenGameSource\(\)/);
   assert.match(script, /const info = await inspectGameFile\(file\)/);
   assert.match(script, /await loadLibrary\(\)/);
