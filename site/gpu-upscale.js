@@ -14,7 +14,8 @@ export const GPU_VERTEX_SHADER = String.raw`
 attribute vec2 a_position;
 varying vec2 v_uv;
 void main() {
-  v_uv = (a_position + 1.0) * 0.5;
+  // js-dos input frames begin at top-left; WebGL textures begin at bottom-left.
+  v_uv = vec2((a_position.x + 1.0) * 0.5, (1.0 - a_position.y) * 0.5);
   gl_Position = vec4(a_position, 0.0, 1.0);
 }`;
 export const GPU_FRAGMENT_SHADER = String.raw`
