@@ -237,9 +237,9 @@ $('inspect-program').addEventListener('click', async () => {
   if (!ci || busy) return;
   try {
     const program = await inspectRunningProgram();
-    if (/GTA8(?:\\.EXE)?/i.test(program)) {
+    if (/\bGTA8(?:\.EXE)?\b/i.test(program)) {
       status('Running ' + program + '. The 8-bit DOS edition can have more limited video modes. For higher colour/resolution try your disc’s GTA24.EXE if available, using your existing installed files.', '8-BIT DOS');
-    } else if (/GTA24(?:\\.EXE)?/i.test(program)) {
+    } else if (/\bGTA24(?:\.EXE)?\b/i.test(program)) {
       status('Running ' + program + '. Try F11 while actually driving/walking, then select the highest supported game video mode. Export a new private .jsdos backup to preserve its settings.', '24-BIT DOS');
     } else {
       status('Reported DOS program: ' + program + '. This cannot confirm which GTA edition is active. Try the game’s screen-mode key only during gameplay.', 'GAME INFO');
