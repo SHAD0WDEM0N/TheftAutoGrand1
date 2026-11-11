@@ -18,7 +18,7 @@ test('only known direct GTA8/GTA24 bundle starts get a hidden DOS boot', () => {
 });
 
 test('only GTA executable names count as detected game launches', () => {
-  for (const name of ['GTA8', 'GTA8.EXE', 'GTA24', 'GTADOS\\GTA24.EXE', 'C:\\GTA\\GTA8.EXE']) {
+  for (const name of ['GTA8', 'GTA8.EXE', 'GTA24', 'GTADOS\\GTA24.EXE', 'C:\\GTA\\GTA8.EXE', 'GTA_UK.EXE', 'GTA_61.EXE']) {
     assert.equal(isGtaProgram(name), true, name);
   }
   for (const name of ['', 'COMMAND.COM', 'GTA.BAT', 'GTA18.EXE', 'SETUP.EXE', null, {}]) {
@@ -95,9 +95,10 @@ test('optional install retains a private local copy and never uploads files', ()
 });
 
 test('quiet startup checkbox affects only the jsdos temporary boot config', () => {
-  assert.match(html, /id="quiet-startup" type="checkbox" checked/);
+  assert.ok(!html.includes('id="quiet-startup"'));
+  assert.match(app, /const quiet = true/);
   assert.match(app, /bundleWithGameMode\(file, edition, chosenMode, \{ quiet \}\)/);
-  assert.match(app, /\$\('quiet-startup'\)\.checked/);
+  assert.ok(!app.includes("$('quiet-startup')"));
 });
 
 
@@ -115,12 +116,15 @@ test('auto-skip requires opted-in persistent DOS VGA text screen after a startup
 });
 
 test('auto-skip is a one-time startup option and stops with boot overlay', () => {
-  assert.match(html, /id="auto-video-skip" type="checkbox" checked/);
+  assert.ok(!html.includes('id="auto-video-skip"'));
+  assert.ok(!html.includes('id="quiet-startup"'));
+  assert.match(app, /const quiet = true/);
+  assert.match(app, /enabled: true/);
   assert.match(app, /function watchVideoSetupPrompt\(commandInterface\)/);
   assert.match(app, /shouldAutoSkipVideoProbe\(\{/);
   assert.match(app, /bootVideoSkipSent = true/);
   assert.match(app, /clearTimeout\(bootVideoSkipTimer\)/);
   assert.match(app, /commandInterface\.simulateKeyPress\(256\)/);
   assert.match(app, /watchVideoSetupPrompt\(ci\)/);
-  assert.match(app, /\$\('auto-video-skip'\)\.disabled = busy \|\| active \|\| checkingSource/);
+  assert.ok(!app.includes("$('auto-video-skip')"));
 });
