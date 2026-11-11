@@ -63,10 +63,12 @@ test('video diagnostics are wired to supported live and start-only js-dos operat
 
 test('single Play CTA is disabled until a local file has passed preflight', () => {
   assert.match(html, /<button id="play"[^>]*disabled>▶ Play GTA<\/button>/);
-  assert.match(html, /<select id="add-file"[^>]*>/);
-  assert.match(html, /<option value="gta">Add GTA Data File<\/option>/);
-  assert.match(html, /<option value="london69">Add Mission Pack 1 Data File/);
-  assert.match(html, /<option value="london61">Add Mission Pack 2 Data File/);
+  assert.match(html, /<details id="add-file-menu" class="add-file-menu">/);
+  assert.match(html, /<summary id="add-file" class="load-button">/);
+  assert.match(html, /<button type="button" data-upload-edition="gta">Add GTA Data File<\/button>/);
+  assert.match(html, /<button type="button" data-upload-edition="london69">Add Mission Pack 1 Data File/);
+  assert.match(html, /<button type="button" data-upload-edition="london61">Add Mission Pack 2 Data File/);
+  assert.ok(!html.includes('<select id="add-file"'));
   assert.match(script, /\$\('play'\)\.disabled = busy \|\| active \|\| checkingSource \|\| londonChecking \|\| !chosenGameSource\(\)/);
   assert.match(script, /const info = await inspectGameFile\(file\)/);
   assert.match(script, /await loadLibrary\(\)/);
@@ -102,4 +104,33 @@ test('desktop and fullscreen are both locked to a centered 4:3 picture', () => {
   assert.ok(!script.includes('setFullScreen('), 'Avoid the js-dos fullscreen path that may stretch to screen width');
   assert.ok(!html.includes('value="16/9"'));
   assert.ok(!html.includes('value="AsIs"'));
+});
+
+
+test('upload menu opens with a click and uses direct button events for each file picker', () => {
+  assert.match(script, /button\.addEventListener\('click', \(\) => \{/);
+  assert.match(script, /button\.dataset\.uploadEdition/);
+  assert.match(script, /\$\('add-file-menu'\)\.open = false/);
+  assert.match(script, /picker\.click\(\)/);
+  assert.match(script, /picker\.value = ''/);
+  assert.match(css, /\.add-file-choices\s*\{[\s\S]*?position:\s*absolute/);
+});
+test('upload verification reports actual filename or rejection reason instead of generic Not loaded', () => {
+  for (const id of ['gta-upload-state','london69-upload-state','london61-upload-state']) assert.ok(html.includes('id="'+id+'"'));
+  assert.match(script, /setUploadProgress\('gta', \{state: 'checking', message: 'Checking ' \+ file\.name/);
+  assert.match(script, /setUploadProgress\('gta', \{state: 'ready', message: 'Verified ' \+ file\.name/);
+  assert.match(script, /setUploadProgress\('gta', \{state: 'error', message: file\.name \+ ' — ' \+ error\.message/);
+  assert.match(script, /setUploadProgress\(edition, \{state: 'ready', message: 'Verified ' \+ file\.name/);
+  assert.match(script, /setUploadProgress\(edition, \{state: 'error', message: file\.name \+ ' — ' \+ error\.message/);
+  assert.match(script, /node\.dataset\.state = progress\?\.state/);
+  assert.ok(!script.includes("'Not loaded'"));
+});
+test('GTA file readiness is not blocked on loading remote emulator code', () => {
+  const start = script.indexOf('async function checkAddedFile(');
+  const end = script.indexOf("$('game').addEventListener('change'", start);
+  const check = script.slice(start, end);
+  assert.ok(start > 0 && end > start);
+  assert.ok(!check.includes('await loadLibrary()'));
+  assert.match(check, /await inspectGameFile\(file\)/);
+  assert.match(script, /status\('Loading emulator code…', 'LOADING'\); await loadLibrary\(\)/);
 });
