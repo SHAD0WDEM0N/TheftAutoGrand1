@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
-import { inspectBundleEditions, bundleWithGameMode, patchAutoexecGame, patchQuietBoot, readZipIndex } from '../site/editions.js';
+import { inspectBundleEditions, bundleWithGameMode, patchAutoexecGame, patchQuietBoot, readZipIndex, inspectLondonGraphicsModes, patchLondonAutoexec } from '../site/editions.js';
 
 function makeBundle(files, config = [
   '[sdl]', 'autolock=false',
@@ -156,4 +156,40 @@ test('quiet mode preserves GTA24 selection, including compressed configuration b
   const result = await inspectBundleEditions(patched);
   assert.equal(result.boot, 'gta24');
   assert.match(result.config, /cls/);
+});
+
+
+test('London 1969 exposes 8-bit and 24-bit executables independent of GTA base executables', async () => {
+  const conf = '[autoexec]\n@echo off\ncls\nmount c .\nc:\ncall london.bat\n';
+  const file = makeBundle(['gtados/GTA8_UK.EXE','gtados/GTA24_UK.EXE','london.bat'], conf);
+  const original = await inspectBundleEditions(file);
+  const london = await inspectLondonGraphicsModes(file, 'london69', original);
+  assert.deepEqual(london.available, ['auto','gta8','gta24']);
+  assert.match(london.note, /London 1969/);
+  assert.match(patchLondonAutoexec(conf, 'london69', 'gta8'), /cd gtados\ngta8_uk\.exe\ncd \.\./);
+  assert.match(patchLondonAutoexec(conf, 'london69', 'gta24'), /cd gtados\ngta24_uk\.exe -nounivbe\ncd \.\./);
+  const patched = await bundleWithGameMode(file, london, 'gta24', {quiet: true, game: 'london69'});
+  assert.match((await inspectBundleEditions(patched)).config, /gta24_uk\.exe -nounivbe/);
+  assert.equal((await inspectBundleEditions(file)).config, conf);
+  assert.match((await inspectBundleEditions(patched)).config, /@echo off/);
+});
+
+test('London 1961 exposes its 24-bit executable and rejects an invented 8-bit edition', async () => {
+  const conf = '[autoexec]\r\n@echo off\r\nmount c .\r\nc:\r\ncall London61.bat\r\n';
+  const file = makeBundle(['GTADOS/Gta24_61.exe','GTADOS/GTA24_UK.EXE','London61.bat'], conf);
+  const london = await inspectLondonGraphicsModes(file, 'london61', await inspectBundleEditions(file));
+  assert.deepEqual(london.available, ['auto','gta24']);
+  const patched = await bundleWithGameMode(file, london, 'gta24', {quiet: true, game: 'london61'});
+  const updated = (await inspectBundleEditions(patched)).config;
+  assert.match(updated, /cd gtados\r\ngta24_61\.exe -nounivbe\r\ncd \.\./);
+  assert.doesNotMatch(updated, /call London61\.bat/);
+  await assert.rejects(bundleWithGameMode(file, london, 'gta8', {game:'london61'}), /not available/);
+  assert.deepEqual((await inspectLondonGraphicsModes(file, 'london61', await inspectBundleEditions(file))).available, ['auto','gta24']);
+});
+
+test('London switching refuses unknown startup commands and preserves base GTA mode support', () => {
+  assert.throws(() => patchLondonAutoexec('[autoexec]\ncall gta.bat\n', 'london69','gta24'), /Expected one london\.bat/);
+  assert.throws(() => patchLondonAutoexec('[autoexec]\ncall london.bat\ncall london.bat\n', 'london69','gta8'), /Expected one london\.bat/);
+  assert.throws(() => patchLondonAutoexec('[autoexec]\ncall London61.bat\n', 'london61','gta8'), /Unsupported graphics edition/);
+  assert.match(patchAutoexecGame('[autoexec]\nGTA8.EXE\n','gta24'), /GTA24.EXE/);
 });
