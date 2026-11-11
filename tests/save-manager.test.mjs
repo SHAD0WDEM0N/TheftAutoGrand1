@@ -41,7 +41,7 @@ test('import rejects wrong edition, confirms overwrite and relaunches from valid
   assert.match(app,/if \(!inspected\.detected\.length\)/);
   assert.match(app,/if \(!confirm\('Import '/);
   assert.match(app,/await saveGameBackup\(game, blob\)/);
-  assert.match(app,/if \(backupSources\[edition\]\) return backupSources\[edition\]\.source/);
+  assert.match(app,/if \(useBackupByGame\[edition\] && backupSources\[edition\]\) return backupSources\[edition\]\.source/);
   assert.match(app,/async function restoreSavedBackups\(\)/);
   assert.match(app,/void restoreSavedBackups\(\)/);
   assert.match(app,/backupSources\[game\] = \{bundle:stored\.bundle/);
@@ -51,4 +51,11 @@ test('save manager does not expose a fake live CPU/RAM state restoration',()=>{
   assert.ok(!html.includes('Resume exact frame'));
   assert.match(app,/not an instant gameplay snapshot/);
   assert.match(app,/!active/);
+});
+
+test('new uploads override stale backups while explicit save or import activates the backup', () => {
+  assert.match(app, /useBackupByGame\.gta = false/);
+  assert.match(app, /useBackupByGame\[edition\] = false/);
+  assert.match(app, /useBackupByGame\[game\] = true/);
+  assert.match(app, /\$\('backup-game'\)\.value = selectedGame/);
 });
