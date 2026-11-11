@@ -57,6 +57,7 @@ function controls() {
   $('player').closest('.game-window').classList.toggle('is-playing', active);
   $('add-file').disabled = busy || active || checkingSource;
   $('native-resolution').disabled = busy || !ci;
+  $('inspect-program').disabled = busy || !ci;
   $('screenshot').disabled = busy || !ci;
   $('render-backend').disabled = busy || active;
   $('game').disabled = busy || active || checkingSource;
@@ -104,7 +105,7 @@ async function end() {
   if (player) await player.stop();
   player = null; ci = null; active = false; paused = false;
   if (bundleUrl) URL.revokeObjectURL(bundleUrl);
-  bundleUrl = null; $('pause').textContent = 'Pause'; $('player').innerHTML = idle; $('video-mode').textContent = 'Native: —'; isFullscreen = false; $('fullscreen').textContent = 'Fullscreen'; controls();
+  bundleUrl = null; $('pause').textContent = 'Pause'; $('player').innerHTML = idle; $('video-mode').textContent = 'Native: —'; $('program-info').textContent = 'Program: —'; isFullscreen = false; $('fullscreen').textContent = 'Fullscreen'; controls();
 }
 async function launch(demo = false) {
   busy = true; controls();
@@ -225,11 +226,39 @@ $('render-backend').addEventListener('change', () => {
     ? 'Canvas fallback selected. It will be used on the next game launch.'
     : 'WebGL rendering selected. It will be used on the next game launch.', 'DISPLAY READY');
 });
-$('native-resolution').addEventListener('click', () => {
+async function inspectRunningProgram() {
+  if (!ci) return;
+  const running = await ci.getRunningProgram();
+  const program = typeof running === 'string' && running.trim() ? running.trim() : 'Unknown';
+  $('program-info').textContent = 'Program: ' + program;
+  return program;
+}
+$('inspect-program').addEventListener('click', async () => {
+  if (!ci || busy) return;
+  try {
+    const program = await inspectRunningProgram();
+    if (/GTA8(?:\\.EXE)?/i.test(program)) {
+      status('Running ' + program + '. The 8-bit DOS edition can have more limited video modes. For higher colour/resolution try your disc’s GTA24.EXE if available, using your existing installed files.', '8-BIT DOS');
+    } else if (/GTA24(?:\\.EXE)?/i.test(program)) {
+      status('Running ' + program + '. Try F11 while actually driving/walking, then select the highest supported game video mode. Export a new private .jsdos backup to preserve its settings.', '24-BIT DOS');
+    } else {
+      status('Reported DOS program: ' + program + '. This cannot confirm which GTA edition is active. Try the game’s screen-mode key only during gameplay.', 'GAME INFO');
+    }
+  } catch (error) {
+    status('Could not identify the running DOS program: ' + error.message, 'GAME INFO');
+  }
+});
+$('native-resolution').addEventListener('click', async () => {
   if (!ci || busy) return;
   if (paused) { player.setPaused(false); paused = false; $('pause').textContent = 'Pause'; }
-  ci.simulateKeyPress(F11_KEY_CODE);
-  status('Sent F11 to GTA. This normally opens the game’s display-mode options. Select a supported mode in the game; native dimensions update if the framebuffer changes.', 'GAME DISPLAY');
+  try {
+    const program = await inspectRunningProgram();
+    ci.simulateKeyPress(F11_KEY_CODE);
+    status('Sent documented GTA screen-mode key F11 to ' + program + '. If nothing appears, the current program or game state may not offer that menu. This control cannot force an unsupported resolution.', 'GAME DISPLAY');
+  } catch (error) {
+    ci.simulateKeyPress(F11_KEY_CODE);
+    status('Sent F11 to the game; version detection failed (' + error.message + '). Higher native modes must be supported by this DOS executable.', 'GAME DISPLAY');
+  }
 });
 $('screenshot').addEventListener('click', async () => {
   if (!ci || busy) return;
