@@ -136,26 +136,33 @@ function updateEditionOptions(source) {
   const note = $('edition-note');
   const game = $('game-edition').value;
   const editions = source?.editions;
-  for (const option of select.options) {
-    if (option.value === 'auto') {
-      option.textContent = game === 'gta' ? 'Original (bundle default)' : 'Default (bundled London launcher)';
-    } else if (option.value === 'gta8') {
-      option.textContent = game === 'london69' ? '8-bit · GTA8_UK.EXE (tested)' : 'Standard · GTA8.EXE';
-    } else if (option.value === 'gta24') {
-      option.textContent = game === 'london69' ? '24-bit · GTA24_UK.EXE (test mode)'
-        : game === 'london61' ? '24-bit · GTA24_61.EXE (test mode)' : 'High Colour · GTA24.EXE';
-    }
-    if (option.value !== 'auto') option.disabled = !editions?.available?.includes(option.value);
-  }
+  const available = editions?.available || ['auto'];
+  // Rebuild the real <option> nodes for the chosen game. Keeping the old
+  // GTA8/GTA24 option nodes led to stale labels on some browser sessions.
+  const modes = game === 'london69'
+    ? [['auto', 'Default · London 1969 (working 8-bit)'],
+       ['gta8', '8-bit · GTA8_UK.EXE (tested)'],
+       ['gta24', '24-bit · GTA24_UK.EXE (experimental)']]
+    : game === 'london61'
+      ? [['auto', 'Default · London 1961'],
+         ['gta24', '24-bit · GTA24_61.EXE (experimental)']]
+      : [['auto', 'Original (bundle default)'],
+         ['gta8', 'Standard · GTA8.EXE'],
+         ['gta24', 'High Colour · GTA24.EXE']];
+  select.replaceChildren(...modes.map(([value, label]) => {
+    const option = new Option(label, value);
+    option.disabled = value !== 'auto' && !available.includes(value);
+    return option;
+  }));
   const preferred = selectedGraphicsByGame[game] || 'auto';
-  select.value = editions?.available?.includes(preferred) ? preferred : 'auto';
+  select.value = available.includes(preferred) ? preferred : 'auto';
   panel.hidden = !source || source.kind !== 'jsdos';
   note.textContent = !editions || source?.kind !== 'jsdos'
-    ? 'Load a compatible .jsdos game bundle to choose its DOS graphics executable.'
+    ? 'Load a compatible .jsdos bundle to choose its DOS executable.'
     : editions.graphicsGame
-      ? editions.note + ' The 24-bit modes are unverified; if they fail, switch back to the tested 8-bit/default launcher. 3dfx requires a separate Glide-capable setup.'
+      ? editions.note + ' Experimental 24-bit modes may show a black screen. Use Default to restore the working launcher.'
       : 'Detected: ' + editions.detected.map(mode => mode === 'gta8' ? 'GTA8.EXE' : 'GTA24.EXE').join(' and ') +
-        '. ' + editions.note + ' 3dfx needs a separately tested Glide-ready setup.';
+        '. ' + editions.note + ' 3dfx requires a tested Glide-capable backend.';
 }
 let checkingSource = false, checkGeneration = 0;
 function playableSource() {
@@ -632,6 +639,7 @@ $('gta-edition').addEventListener('change', () => {
 });
 $('game-edition').addEventListener('change', () => {
   updateGameEditions();
+  updateEditionOptions(chosenGameSource());
   updateMobileNotice();
   controls();
 });
