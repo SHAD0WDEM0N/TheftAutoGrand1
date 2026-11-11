@@ -30,7 +30,10 @@
             <span class="boot-spinner" aria-hidden="true"></span>
             <strong>Starting GTA…</strong>
             <p id="boot-message" role="status" aria-live="polite">Preparing the DOS game in the background.</p>
-            <button id="show-dos" type="button" class="boot-show-dos">Show DOS / troubleshoot</button>
+            <div class="boot-actions">
+              <button id="show-game" type="button" class="boot-show-game">Show game</button>
+              <button id="show-dos" type="button" class="boot-show-dos">Show DOS / troubleshoot</button>
+            </div>
           </div>
         </div>
         <div id="launch-overlay" class="launch-overlay">
@@ -39,6 +42,7 @@
             <h1>Grand Theft Auto</h1>
             <button id="play" type="button" class="play-button" disabled>▶ Play GTA</button>
             <button id="add-file" type="button" class="load-button">+ Add File</button>
+            <button id="install-local" type="button" class="local-install" disabled hidden>Remember this game on this PC</button>
             <div id="edition-panel" class="edition-panel" hidden>
               <label for="gta-edition">Graphics edition</label>
               <select id="gta-edition" aria-label="Choose installed GTA DOS executable">
@@ -108,7 +112,7 @@ dir</textarea>
 
         <section class="tool-group">
           <h2>Save one-click launch</h2>
-          <p>Start GTA successfully, enter the DOS commands used to launch the installed game, then save a private shortcut in this browser.</p>
+          <p>Use <strong>Remember this game on this PC</strong> after adding a verified .jsdos bundle, or start GTA and save a private shortcut with your latest in-game progress below.</p>
           <label class="field-label" for="quick-commands">DOS launch commands</label>
           <textarea id="quick-commands" rows="3" spellcheck="false" placeholder="c:&#10;cd GTA&#10;GTA.BAT"></textarea>
           <button id="remember" class="subtle-button" type="button" disabled>Save / update game shortcut</button>

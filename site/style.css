@@ -257,3 +257,28 @@ textarea { background: #0c1113; color: var(--text); border: 1px solid var(--stro
 }
 @keyframes gta-boot-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .boot-spinner { animation: none; border-color: var(--accent-orange); } }
+
+/* Optional private install: never uploads the user's game files. */
+.start-menu .local-install {
+  color: #b7ede2;
+  border: 1px solid #407e79;
+  background: transparent;
+  min-height: 36px;
+  font-size: 12px;
+  font-weight: 500;
+}
+/* Never automatically reveal raw DOS on timeout. The user chooses what to see. */
+.boot-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.boot-actions button { min-height: 40px; margin-top: 6px; border-radius: 4px; font-size: 12px; padding: 8px 13px; }
+.boot-show-game {
+  background: var(--accent-orange);
+  border: 1px solid #ffb77e;
+  color: #201711;
+  font-weight: 700;
+}
+.boot-show-game:hover { background: #ffbd90; }
