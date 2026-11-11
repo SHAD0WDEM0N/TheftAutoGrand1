@@ -3,95 +3,130 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="description" content="A private browser DOS launcher for your own copy of Grand Theft Auto (1997). No game files distributed.">
-  <meta name="theme-color" content="#101411">
-  <title>DOS Garage · GTA 1997</title>
+  <meta name="description" content="Play your personally owned 1997 GTA DOS game in a browser. Game files remain on your device.">
+  <meta name="theme-color" content="#0d0f0f">
+  <title>Grand Theft Auto (1997) · DOS Player</title>
   <link rel="stylesheet" href="./style.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
-  <a class="skip" href="#player">Skip to game screen</a>
-  <header class="topbar">
-    <a href="./" class="identity"><span class="terminal-logo">DOS<span>_</span></span><span><strong>Garage</strong><small>GRAND THEFT AUTO / 1997</small></span></a>
-    <div class="top-right"><span id="badge" class="status-tag">READY</span><a href="#import" class="top-load">Load game</a></div>
+  <a class="skip" href="#player">Skip to game</a>
+  <header class="appbar">
+    <div class="brand"><strong>GTA <span>1997</span></strong><small>DOS PLAYER</small></div>
+    <div class="top-actions">
+      <span id="badge" class="status-tag">READY</span>
+      <button id="pause" type="button" disabled>Pause</button>
+      <button id="fullscreen" type="button" disabled>Fullscreen</button>
+      <a class="setup-link" href="#tools-panel">Setup</a>
+    </div>
   </header>
-  <main class="shell" id="garage">
-    <section class="play-area" aria-labelledby="screen-heading">
-      <div class="pane-heading"><div><span class="led"></span><h1 id="screen-heading">Game screen</h1></div><span class="quiet-note">DOSBox · 4:3</span></div>
-      <div class="screen-shell">
-        <div id="player"><div class="idle"><span class="idle-glyph" aria-hidden="true">▣</span><strong>NO GAME RUNNING</strong><p>Use Play saved GTA or load your own game file.</p><a class="inline-load" href="#import">Choose file</a></div></div>
-      </div>
-      <div class="session-bar" aria-label="Session controls">
-        <button id="pause" disabled>Pause</button>
-        <button id="fullscreen" disabled>Fullscreen</button>
-        <button id="export" disabled>Export backup</button>
-        <button id="stop" class="end-button" disabled>End session</button>
-      </div>
-      <section class="touch-pad" aria-label="On-screen GTA controls">
-        <div class="touch-heading"><strong>Touch controls</strong><span>Hold arrows to steer or walk</span></div>
-        <div class="touch-layout">
-          <div class="dpad" aria-label="Movement controls">
-            <button class="up" data-hold-key="265" aria-label="Move forwards">▲</button>
-            <button class="left" data-hold-key="263" aria-label="Turn left">◀</button>
-            <button class="down" data-hold-key="264" aria-label="Move backwards">▼</button>
-            <button class="right" data-hold-key="262" aria-label="Turn right">▶</button>
-          </div>
-          <div class="touch-actions" aria-label="Action controls">
-            <button data-hold-key="341">Fire / Ctrl</button>
-            <button data-hold-key="32">Jump / Brake</button>
-            <button data-hold-key="257">Enter / Exit</button>
-            <button data-hold-key="258">Horn / Tab</button>
-            <button data-hold-key="88">Weapon +</button>
-            <button data-hold-key="90">Weapon −</button>
-            <button data-hold-key="256">Esc</button>
+
+  <main class="app">
+    <section class="game-window" aria-label="Game player">
+      <div id="stage-frame" class="stage-frame">
+        <div id="player"><div class="idle" aria-hidden="true"></div></div>
+        <div id="launch-overlay" class="launch-overlay">
+          <div class="start-menu">
+            <h1>Grand Theft Auto <span>1997 · DOS</span></h1>
+            <button id="quick-play" type="button" class="play-button" disabled>Play saved GTA</button>
+            <button id="pick-file" type="button" class="load-button">Choose game file</button>
+            <button id="launch" type="button" class="load-button" disabled>Launch selected file</button>
+            <p id="quick-info">No saved game in this browser yet.</p>
           </div>
         </div>
-        <p class="hint">For GTA's default keyboard layout. Buttons work only while DOS is running; alternate in-game bindings may differ.</p>
-      </section>
-      <div class="system-line"><span class="system-label">STATUS</span><p id="status" role="status" aria-live="polite">No game running. Your files stay on your device.</p></div>
+      </div>
     </section>
-    <aside class="launcher" aria-label="Game launcher">
-      <section class="launcher-section quick-section">
-        <div class="section-title"><span>01</span><h2>Quick launch</h2></div>
-        <button id="quick-play" class="action-button" disabled>▶ Play saved GTA</button>
-        <p id="quick-info" class="hint">No saved game on this browser yet.</p>
-      </section>
-      <section id="import" class="launcher-section">
-        <div class="section-title"><span>02</span><h2>Load your game</h2></div>
-        <label for="game" class="field-label">Local ISO or .jsdos bundle</label>
-        <input id="game" type="file" accept=".iso,.jsdos">
-        <p id="file-info" class="file-name">No file selected</p>
-        <div id="mobile-warning" class="notice" hidden><strong>Large file warning</strong><p id="mobile-warning-text"></p><label class="caution-check"><input id="override-mobile" type="checkbox"> Attempt anyway (Safari may crash)</label></div>
-        <button id="launch" class="action-button secondary-action" disabled>Launch selected file</button>
-        <details class="more-settings">
-          <summary>ISO boot commands</summary>
-          <label for="commands" class="field-label">Commands after mounting D:</label>
-          <textarea id="commands" rows="3" spellcheck="false">d:
+
+    <div class="player-bar">
+      <div class="graphics-controls">
+        <label for="display-mode">Picture</label>
+        <select id="display-mode" aria-label="Picture quality">
+          <option value="pixelated">Crisp pixels</option>
+          <option value="smooth">Smooth scaling</option>
+        </select>
+        <span id="video-mode" class="video-mode" aria-live="polite">Native: —</span>
+        <button id="native-resolution" type="button" title="Cycle the original game's internal display modes using F11" disabled>Game resolution (F11)</button>
+      </div>
+      <div class="player-actions">
+        <button id="export" disabled>Export save / backup</button>
+        <button id="stop" disabled>End game</button>
+      </div>
+    </div>
+
+    <div class="status-line" role="status">
+      <span class="status-led" aria-hidden="true"></span>
+      <p id="status" aria-live="polite">Ready. Load a private game file or play a saved local copy.</p>
+    </div>
+
+    <details id="tools-panel" class="tools-panel">
+      <summary><span>Game setup &amp; advanced tools</span><small>Imports · Launch commands · Local saves</small></summary>
+      <div class="tools-grid">
+        <section class="tool-group">
+          <h2>Game files</h2>
+          <p>Your own ISO or exported .jsdos backup. Files are processed on your device.</p>
+          <label class="field-label" for="game">Local file</label>
+          <input id="game" type="file" accept=".iso,.jsdos">
+          <p id="file-info" class="filename">No game file selected</p>
+          <div id="mobile-warning" class="notice" hidden>
+            <strong>Large file warning</strong>
+            <p id="mobile-warning-text"></p>
+            <label><input id="override-mobile" type="checkbox"> Attempt anyway</label>
+          </div>
+          <details class="subtools">
+            <summary>ISO startup commands</summary>
+            <label class="field-label" for="commands">Commands after mounting drive D:</label>
+            <textarea id="commands" rows="3" spellcheck="false">d:
 dir</textarea>
-          <p class="hint">Only for initial ISO sessions. Install GTA to C:, then start the DOS game executable.</p>
-        </details>
-        <button id="demo" class="text-button">Test DOS (no game files)</button>
-      </section>
-      <section class="launcher-section">
-        <div class="section-title"><span>03</span><h2>One-click setup</h2></div>
-        <details class="more-settings">
-          <summary>Set up or update saved game</summary>
-          <label for="quick-commands" class="field-label">Commands that already work on your installed copy</label>
+          </details>
+          <button id="demo" class="subtle-button" type="button">Test DOS without a game</button>
+        </section>
+
+        <section class="tool-group">
+          <h2>Save one-click launch</h2>
+          <p>Start GTA successfully, enter the DOS commands used to launch the installed game, then save a private shortcut in this browser.</p>
+          <label class="field-label" for="quick-commands">DOS launch commands</label>
           <textarea id="quick-commands" rows="3" spellcheck="false" placeholder="c:&#10;cd GTA&#10;GTA.BAT"></textarea>
-          <p class="hint">Launch GTA first, enter the actual DOS commands used to run it, then save. This stores a private copy in this browser.</p>
-          <button id="remember" class="action-button secondary-action" disabled>Save one-click game</button>
-        </details>
-        <button id="forget" class="text-button danger" disabled>Forget saved GTA on this device</button>
-      </section>
-      <details class="help-section">
-        <summary>Help &amp; mobile setup</summary>
-        <p>This is a personal emulator frontend, not a game download. No GTA files are hosted here.</p>
-        <p>A full CD-sized bundle can exhaust iPhone Safari memory. Use the documented Windows compact-bundle utility to make a smaller private copy, if your installed game doesn't need its disc image at runtime.</p>
-        <p>Save inside GTA and export a separate .jsdos backup. The one-click copy doesn't update itself while you play.</p>
-        <p><a href="https://github.com/SHAD0WDEM0N/TheftAutoGrand1#make-a-smaller-private-mobile-bundle">Mobile bundle instructions</a></p>
-      </details>
-    </aside>
+          <button id="remember" class="subtle-button" type="button" disabled>Save / update game shortcut</button>
+          <button id="forget" class="text-button" type="button" disabled>Forget browser copy</button>
+          <p class="hint">Always export a separate backup. Your local game copy is not automatically saved while playing.</p>
+        </section>
+
+        <section class="tool-group">
+          <h2>Display &amp; compatibility</h2>
+          <p><strong>Game resolution (F11)</strong> asks the original GTA DOS game to cycle through its available video modes. Use it during gameplay.</p>
+          <p><strong>Crisp pixels</strong> and <strong>Smooth scaling</strong> only change how the browser enlarges the picture. They do not create new texture detail.</p>
+          <p>The player preserves GTA's 4:3 aspect ratio. Fullscreen fills as much of your monitor as possible without stretching the picture to 16:9.</p>
+          <p class="hint">Desktop Chrome or Edge is recommended. Mobile development is paused for now.</p>
+          <a class="docs" href="https://github.com/SHAD0WDEM0N/TheftAutoGrand1#readme">Project documentation</a>
+        </section>
+      </div>
+    </details>
+
+    <section class="touch-pad" aria-label="Optional touch game controls">
+      <div class="touch-heading"><strong>Touch controls</strong><span>Press and hold to move</span></div>
+      <div class="touch-layout">
+        <div class="dpad">
+          <button class="up" data-hold-key="265" aria-label="Forwards">▲</button>
+          <button class="left" data-hold-key="263" aria-label="Left">◀</button>
+          <button class="down" data-hold-key="264" aria-label="Backwards">▼</button>
+          <button class="right" data-hold-key="262" aria-label="Right">▶</button>
+        </div>
+        <div class="touch-actions">
+          <button data-hold-key="341">Fire</button>
+          <button data-hold-key="32">Brake / Jump</button>
+          <button data-hold-key="257">Enter / Exit</button>
+          <button data-hold-key="258">Horn</button>
+          <button data-hold-key="88">Weapon +</button>
+          <button data-hold-key="90">Weapon −</button>
+          <button data-hold-key="256">Esc</button>
+        </div>
+      </div>
+    </section>
   </main>
-  <footer class="footnote"><span>DOS GARAGE · LOCAL FILES ONLY</span><a href="https://github.com/SHAD0WDEM0N/TheftAutoGrand1">Source &amp; documentation</a><span>Unofficial launcher; GTA owned by its rights holders.</span></footer>
+
+  <footer class="footer">
+    <span>Personal browser emulator · No Rockstar game files hosted</span>
+    <a href="https://github.com/SHAD0WDEM0N/TheftAutoGrand1">GitHub</a>
+  </footer>
 </body>
 </html>
