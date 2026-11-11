@@ -88,14 +88,14 @@ test('F11 screen-mode control reports running DOS executable rather than promisi
 });
 
 test('desktop and fullscreen are both locked to a centered 4:3 picture', () => {
-  assert.match(css, /\\.stage-frame\\s*\\{[\\s\\S]*?aspect-ratio:\\s*4\\s*\\/\\s*3/);
-  assert.match(css, /#stage-frame:fullscreen\\s*\\{[\\s\\S]*?display:\\s*flex/);
-  assert.match(css, /#stage-frame:fullscreen #player\\s*\\{[\\s\\S]*?aspect-ratio:\\s*4\\s*\\/\\s*3/);
-  assert.match(css, /#stage-frame:fullscreen\\s*\\{[\\s\\S]*?background:\\s*#000/);
-  assert.match(script, /document\\.fullscreenElement === \\$\\('stage-frame'\\)/);
-  assert.match(script, /document\\.addEventListener\\('fullscreenchange'/);
-  assert.match(script, /document\\.exitFullscreen\\(\\)/);
-  assert.match(script, /renderAspect:\\s*'4\\/3'/);
+  assert.match(css, /\.stage-frame\s*\{[\s\S]*?aspect-ratio:\s*4\s*\/\s*3/);
+  assert.match(css, /#stage-frame:fullscreen\s*\{[\s\S]*?display:\s*flex/);
+  assert.match(css, /#stage-frame:fullscreen #player\s*\{[\s\S]*?aspect-ratio:\s*4\s*\/\s*3/);
+  assert.match(css, /#stage-frame:fullscreen\s*\{[\s\S]*?background:\s*#000/);
+  assert.match(script, /document\.fullscreenElement === \$\('stage-frame'\)/);
+  assert.match(script, /document\.addEventListener\('fullscreenchange'/);
+  assert.match(script, /document\.exitFullscreen\(\)/);
+  assert.match(script, /renderAspect:\s*'4\/3'/);
   assert.ok(!script.includes('setFullScreen('), 'Avoid the js-dos fullscreen path that may stretch to screen width');
   assert.ok(!html.includes('value="16/9"'));
   assert.ok(!html.includes('value="AsIs"'));
