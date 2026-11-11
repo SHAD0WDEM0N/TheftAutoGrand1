@@ -53,7 +53,9 @@
           <option value="AsIs">Raw pixels</option>
         </select>
         <span id="video-mode" class="video-mode" aria-live="polite">Native: —</span>
-        <button id="native-resolution" type="button" title="Open the game's own video-mode options via F11" disabled>GTA display menu (F11)</button>
+        <span id="program-info" class="video-mode" aria-live="polite">Program: —</span>
+        <button id="inspect-program" type="button" title="Identify the running DOS executable before trying higher-resolution modes" disabled>Check GTA version</button>
+        <button id="native-resolution" type="button" title="Send GTA's documented screen-mode key during active gameplay; availability depends on the executable" disabled>Screen mode (F11)</button>
       </div>
       <div class="player-actions">
         <button id="screenshot" type="button" disabled>Save screenshot</button>
@@ -108,7 +110,9 @@ dir</textarea>
             <option value="canvas">Canvas (compatibility fallback)</option>
           </select>
           <p class="hint">Choose before launching GTA; switching requires ending and restarting the game.</p>
-          <p><strong>GTA display menu (F11)</strong> opens the game's original video-mode options. Modes depend on the DOS edition and may not all work in the emulator.</p>
+          <p><strong>Check GTA version</strong> reports the running DOS executable. Retail GTA may include GTA8.EXE and GTA24.EXE; higher-resolution modes are more likely to be available in the 24-bit version.</p>
+          <p><strong>Screen mode (F11)</strong> sends GTA's documented video-mode key while the game runs. It may do nothing in certain game states or editions, and does not itself force 1080p or the maximum mode.</p>
+          <p>GTA saves its resolution preference in GTADATA/PLAYER_A.DAT. To keep a confirmed setting, export an updated private .jsdos backup after changing it. Never edit the original game's save data without a backup.</p>
           <p><strong>Sharp pixels</strong> stays enabled to avoid the blurry smoothing effect. The game remains limited by GTA's original DOS graphics resolution.</p>
           <p><strong>Shape: CRT 4:3</strong> corrects non-square VGA pixels. <strong>Raw pixels</strong> shows the uncorrected source for comparison. Neither changes internal game resolution.</p>
           <p><strong>Verify before Play</strong> checks the ISO or .jsdos archive structure and prepares the emulator code; it does not run GTA or precompile every graphics operation. Full gameplay compatibility is only confirmed when you start the game.</p>
