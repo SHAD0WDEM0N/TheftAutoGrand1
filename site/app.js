@@ -37,13 +37,10 @@ function showFileState(message, state = 'empty') {
   $('source-detail').textContent = message;
 }
 let isFullscreen = false;
-const ASPECT_PREF_KEY = 'dos-garage-aspect-mode';
 const BACKEND_PREF_KEY = 'dos-garage-display-backend';
 const F11_KEY_CODE = 300;
 const idle = $('player').innerHTML;
 try {
-  const aspect = localStorage.getItem(ASPECT_PREF_KEY);
-  if (aspect === '4/3' || aspect === 'AsIs') $('aspect-mode').value = aspect;
   const backend = localStorage.getItem(BACKEND_PREF_KEY);
   if (backend === 'webgl' || backend === 'canvas') $('render-backend').value = backend;
 } catch { /* private-mode storage may be unavailable */ }
@@ -124,6 +121,9 @@ function bundleTools() {
 async function end() {
   clearTimeout(timer);
   releaseHeldKeys();
+  if (document.fullscreenElement === $('stage-frame')) {
+    try { await document.exitFullscreen(); } catch { /* restore normal layout even if fullscreen exit fails */ }
+  }
   if (player) await player.stop();
   player = null; ci = null; active = false; paused = false;
   if (bundleUrl) URL.revokeObjectURL(bundleUrl);
@@ -168,10 +168,9 @@ async function launch(demo = false) {
       theme: 'dark', autoStart: true, countDownStart: 0, autoSave: false,
       kiosk: true,
       softFullscreen: isTouchDevice,
-      fsChanges: { local: false }, renderAspect: $('aspect-mode').value,
+      fsChanges: { local: false }, renderAspect: '4/3',
       renderBackend: $('render-backend').value, imageRendering: 'pixelated',
       onEvent(event, value) {
-        if (event === 'fullscreen-change') { isFullscreen = Boolean(value); $('fullscreen').textContent = isFullscreen ? 'Exit fullscreen' : 'Fullscreen'; }
         if (event === 'ci-ready') {
           ci = value; clearTimeout(timer); controls();
           ci.events().onFrameSize((width, height) => { if (width > 0 && height > 0) $('video-mode').textContent = 'Native: ' + width + '×' + height; });
@@ -189,6 +188,7 @@ async function launch(demo = false) {
       }
     });
     player.setNoCloud(true);
+    player.setRenderAspect('4/3'); // Enforce the same classic aspect on startup and F11 mode changes.
     status('Starting DOS. Use End session if the emulator reports an error.', 'BOOTING');
     timer = setTimeout(() => { if (!ci) status('Startup is taking longer than expected. Check the player for errors, or end the session and retry.', 'CHECK TERMINAL'); }, 60000);
   } catch (error) {
@@ -244,21 +244,27 @@ $('demo').addEventListener('click', () => launch(true));
 $('quick-commands').addEventListener('input', controls);
 $('override-mobile').addEventListener('change', controls);
 $('pause').addEventListener('click', () => { paused = !paused; player.setPaused(paused); $('pause').textContent = paused ? 'Resume' : 'Pause'; });
-$('fullscreen').addEventListener('click', () => {
+// Fullscreen the 4:3 stage, never js-dos's own 16:9-sized root.
+$('fullscreen').addEventListener('click', async () => {
   if (!player) return;
-  player.setFullScreen(!isFullscreen);
+  try {
+    if (document.fullscreenElement === $('stage-frame')) {
+      await document.exitFullscreen();
+    } else if (!document.fullscreenElement && $('stage-frame').requestFullscreen) {
+      await $('stage-frame').requestFullscreen();
+    } else {
+      throw new Error('Fullscreen is unavailable while another element is fullscreen.');
+    }
+  } catch (error) {
+    status('Could not enter fullscreen: ' + error.message, 'DISPLAY NOTICE');
+  }
+});
+document.addEventListener('fullscreenchange', () => {
+  isFullscreen = document.fullscreenElement === $('stage-frame');
+  $('fullscreen').textContent = isFullscreen ? 'Exit fullscreen' : 'Fullscreen';
+  if (player) player.setRenderAspect('4/3');
 });
 // Only sharp pixel-art scaling is exposed: smooth interpolation blurred GTA's native sprites.
-$('aspect-mode').addEventListener('change', () => {
-  const aspect = $('aspect-mode').value;
-  if (!['4/3', 'AsIs'].includes(aspect)) return;
-  try { localStorage.setItem(ASPECT_PREF_KEY, aspect); } catch { /* optional preference */ }
-  if (player) player.setRenderAspect(aspect);
-  status(aspect === '4/3'
-    ? 'CRT 4:3 correction enabled. DOS VGA pixels can be non-square.'
-    : 'Raw source-pixel aspect selected for comparison; GTA may look vertically squashed.',
-    'DISPLAY READY');
-});
 $('render-backend').addEventListener('change', () => {
   const backend = $('render-backend').value;
   if (!['webgl', 'canvas'].includes(backend)) return;
