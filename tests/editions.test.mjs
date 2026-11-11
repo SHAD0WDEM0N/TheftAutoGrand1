@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
-import { inspectBundleEditions, bundleWithGameMode, patchAutoexecGame, patchQuietBoot, readZipIndex, inspectLondonGraphicsModes, patchLondonAutoexec } from '../site/editions.js';
+import { inspectBundleEditions, bundleWithGameMode, patchAutoexecGame, patchQuietBoot, readZipIndex, inspectLondonGraphicsModes, patchLondonAutoexec, patchDosPixelAspect } from '../site/editions.js';
 
 function makeBundle(files, config = [
   '[sdl]', 'autolock=false',
@@ -192,4 +192,42 @@ test('London switching refuses unknown startup commands and preserves base GTA m
   assert.throws(() => patchLondonAutoexec('[autoexec]\ncall london.bat\ncall london.bat\n', 'london69','gta8'), /Expected one london\.bat/);
   assert.throws(() => patchLondonAutoexec('[autoexec]\ncall London61.bat\n', 'london61','gta8'), /Unsupported graphics edition/);
   assert.match(patchAutoexecGame('[autoexec]\nGTA8.EXE\n','gta24'), /GTA24.EXE/);
+});
+
+
+test('DOSBox render aspect is enabled for native 320x200 mode, preserving startup commands', () => {
+  const original = '[dosbox]\nmemsize=32\n[render]\nframeskip=0\naspect=false\n[autoexec]\ncall london.bat\n';
+  const patched = patchDosPixelAspect(original);
+  assert.match(patched, /\[render\]\nframeskip=0\naspect=true\n\[autoexec\]/);
+  assert.match(patched, /call london\.bat/);
+  assert.equal(patchDosPixelAspect(patched), patched);
+  assert.equal(original.includes('aspect=true'), false);
+});
+
+test('DOSBox aspect patch inserts render section, preserves CRLF and is idempotent', () => {
+  const original = '[dosbox]\r\nmemsize=32\r\n[autoexec]\r\nGTA8.EXE\r\n';
+  const patched = patchDosPixelAspect(original);
+  assert.match(patched, /\[autoexec\]\r\nGTA8.EXE\r\n\[render\]\r\naspect=true\r\n/);
+  assert.equal(patchDosPixelAspect(patched), patched);
+  const withRender = '[render]\r\nframeskip=0\r\n[autoexec]\r\nGTA8.EXE\r\n';
+  const inserted = patchDosPixelAspect(withRender);
+  assert.match(inserted, /\[render\]\r\naspect=true\r\nframeskip=0\r\n\[autoexec\]/);
+  assert.equal(patchDosPixelAspect(inserted), inserted);
+});
+
+test('quiet boot patches DOSBox aspect in temporary GTA and London bundles without editing originals', async () => {
+  const conf = '[render]\nframeskip=0\naspect=false\n[autoexec]\nmount c .\nc:\ncd GTADOS\nGTA8.EXE\n';
+  const gta = makeBundle(['GTADOS/GTA8.EXE','GTADOS/GTA24.EXE'], conf);
+  const gtaMeta = await inspectBundleEditions(gta);
+  const patched = await bundleWithGameMode(gta, gtaMeta, 'auto', {quiet: true});
+  assert.match((await inspectBundleEditions(patched)).config, /\[render\]\nframeskip=0\naspect=true/);
+  assert.equal((await inspectBundleEditions(gta)).config, conf);
+  const londonConf = '[render]\nframeskip=0\n[autoexec]\nmount c .\nc:\ncall london.bat\n';
+  const london = makeBundle(['GTADOS/GTA8_UK.EXE','GTADOS/GTA24_UK.EXE','london.bat'], londonConf);
+  const londonMeta = await inspectLondonGraphicsModes(london,'london69',await inspectBundleEditions(london));
+  const londonPatched = await bundleWithGameMode(london,londonMeta,'gta24',{quiet:true,game:'london69'});
+  const output = (await inspectBundleEditions(londonPatched)).config;
+  assert.match(output, /\[render\]\naspect=true\nframeskip=0/);
+  assert.match(output, /gta24_uk\.exe -nounivbe/);
+  assert.match((await inspectBundleEditions(london)).config,/call london\.bat/);
 });
