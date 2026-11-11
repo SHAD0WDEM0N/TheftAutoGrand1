@@ -538,10 +538,8 @@ async function checkAddedFile(file) {
   try {
     const info = await inspectGameFile(file);
     if (generation !== checkGeneration) return;
-    showFileState('File format valid. Preparing the DOS player…', 'checking');
-    status('Preparing DOS emulator scripts and renderer assets…', 'PREPARING');
-    await loadLibrary();
-    if (generation !== checkGeneration) return;
+    showFileState('File structure valid. Verifying launch options…', 'checking');
+    status('Checking DOS launch configuration locally…', 'CHECKING');
     let editions = null;
     if (info.kind === 'jsdos') {
       editions = await inspectBundleEditions(file);
@@ -862,6 +860,7 @@ $('forget').addEventListener('click', async () => {
     savedShortcut = null;
     savedSourceReady = false;
     savedEditionInfo = null;
+    if (!fileWasChosen) setUploadProgress('gta', {state: 'error', message: 'Saved GTA bundle could not be checked: ' + error.message});
     updateGameEditions();
     if (!fileWasChosen) updateEditionOptions(null);
     $('quick-info').textContent = 'No saved game stored in this browser.';
@@ -886,6 +885,7 @@ loadPrivateShortcut().then(async record => {
     await loadLibrary();
     savedEditionInfo = await inspectBundleEditions(record.bundle);
     savedSourceReady = true;
+    setUploadProgress('gta', {state: 'ready', message: 'Verified locally saved GTA bundle (gameplay previously configured)'});
     $('quick-commands').value = record.commands || '';
     $('quick-info').textContent = 'Private saved game found on this browser.';
     if (!fileWasChosen) {
