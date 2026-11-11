@@ -70,7 +70,7 @@ test('enhanced modes render from private emulator frames, not downloaded mod ass
   assert.match(app, /canScale2x\(w, h\)/);
   assert.match(css, /#stage-frame:fullscreen #enhanced-canvas\s*\{/);
   assert.match(css, /#enhanced-canvas\s*\{[\s\S]*?pointer-events:\s*none/);
-  assert.match(app, /setGraphicsMode\(\$\('graphics-startup'\)\.value\)/);
+  assert.match(app, /handleGraphicsChange\(\$\('graphics-startup'\)\.value\)/);
 });
 
 test('SciTech Esc button needs a user click, and detecting GTA exe does not reveal DOS', () => {
