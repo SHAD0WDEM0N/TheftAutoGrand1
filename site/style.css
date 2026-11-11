@@ -34,7 +34,7 @@ a { color: var(--highlight); }
 .app { min-height: calc(100dvh - 54px); padding: 12px 14px 24px; }
 .game-window { display: flex; justify-content: center; align-items: flex-start; }
 .stage-frame {
-  width: min(100%, calc((100dvh - 205px) * 4 / 3), 1700px);
+  width: min(100%, 106dvh, 1700px);
   min-width: 0;
   aspect-ratio: 4 / 3;
   position: relative;
