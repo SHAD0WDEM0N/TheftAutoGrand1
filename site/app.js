@@ -18,6 +18,11 @@ let scaleImage = null, scaleWidth = 0, scaleHeight = 0, scaleLastPaint = 0, scal
 let gpuRenderer = null, gpuLastFrame = 0, gpuUnavailable = false;
 const londonSources = { london69: null, london61: null };
 let londonChecking = false;
+const uploadProgress = { gta: null, london69: null, london61: null };
+function setUploadProgress(edition, progress) {
+  uploadProgress[edition] = progress;
+  updateGameEditions();
+}
 function chosenGameSource() {
   const edition = $('game-edition').value;
   if (edition === 'gta') return playableSource();
@@ -42,11 +47,18 @@ function updateGameEditions() {
     }
   }
   if ($('game-edition').selectedOptions[0]?.disabled) $('game-edition').value = 'gta';
-  $('gta-upload-state').textContent = 'GTA 1997: ' + (base ? 'File ready' : 'Not loaded');
-  $('london69-upload-state').textContent = 'Mission Pack 1 (1969): ' +
-    (available69 ? 'Compatible file structure · Selectable' : ready69 ? 'Verified · Add GTA data to unlock' : 'Not loaded');
-  $('london61-upload-state').textContent = 'Mission Pack 2 (1961): ' +
-    (available61 ? 'Compatible file structure · Selectable' : ready61 ? 'Verified · Add prerequisite files to unlock' : 'Not loaded');
+  const labelState = (id, caption, progress, ready, selectable, missingPrereqs) => {
+    const node = $(id);
+    const message = progress?.message || (ready ? 'File verified' : 'No file selected');
+    node.textContent = caption + ': ' + message +
+      (ready && !selectable ? ' · ' + missingPrereqs : '');
+    node.dataset.state = progress?.state || (ready ? 'ready' : 'empty');
+  };
+  labelState('gta-upload-state', 'GTA 1997', uploadProgress.gta, base, base, '');
+  labelState('london69-upload-state', 'Mission Pack 1 (1969)', uploadProgress.london69,
+    ready69, available69, 'add GTA data to unlock');
+  labelState('london61-upload-state', 'Mission Pack 2 (1961)', uploadProgress.london61,
+    ready61, available61, 'add GTA and Mission Pack 1 to unlock');
 }
 function clearGpu() {
   $('gpu-canvas').hidden = true;
@@ -197,7 +209,10 @@ function releaseHeldKeys() {
 function status(message, badge) { $('status').textContent = message; if (badge) $('badge').textContent = badge; }
 function controls() {
   $('player').closest('.game-window').classList.toggle('is-playing', active);
-  $('add-file').disabled = busy || active || checkingSource || londonChecking;
+  const uploadDisabled = busy || active || checkingSource || londonChecking;
+  $('add-file-menu').classList.toggle('is-disabled', uploadDisabled);
+  for (const button of document.querySelectorAll('[data-upload-edition]')) button.disabled = uploadDisabled;
+  if (uploadDisabled) $('add-file-menu').open = false;
   const canInstall = !busy && !active && !checkingSource && selectedSource?.from === 'file' && selectedSource.kind === 'jsdos';
   $('install-local').hidden = !selectedSource || selectedSource.kind !== 'jsdos' || selectedSource.from !== 'file';
   $('install-local').disabled = !canInstall;
@@ -517,6 +532,7 @@ async function checkAddedFile(file) {
   $('override-mobile').checked = false;
   $('file-info').textContent = file.name + ' · ' + (file.size / 1048576).toFixed(1) + ' MiB';
   showFileState('Checking ' + file.name + '…', 'checking');
+  setUploadProgress('gta', {state: 'checking', message: 'Checking ' + file.name + '…'});
   status('Checking game file structure locally…', 'CHECKING');
   controls();
   try {
@@ -532,6 +548,7 @@ async function checkAddedFile(file) {
       if (generation !== checkGeneration) return;
     }
     selectedSource = { file, kind: info.kind, from: 'file', editions };
+    setUploadProgress('gta', {state: 'ready', message: 'Verified ' + file.name + ' (ZIP/DOS structure; gameplay not tested)'});
     updateEditionOptions(selectedSource);
     updateGameEditions();
     showFileState('Ready to start: ' + file.name + ' (' + info.kind.toUpperCase() + '). Game launch not yet tested.', 'ready');
@@ -539,7 +556,7 @@ async function checkAddedFile(file) {
     updateMobileNotice();
   } catch (error) {
     if (generation !== checkGeneration) return;
-    updateGameEditions();
+    setUploadProgress('gta', {state: 'error', message: file.name + ' — ' + error.message});
     showFileState('File check failed: ' + error.message, 'error');
     status('File check failed: ' + error.message, 'INVALID FILE');
   } finally {
@@ -557,6 +574,7 @@ async function checkLondonBundle(edition, file) {
   londonChecking = true;
   londonSources[edition] = null;
   $(statusId).textContent = 'Checking ' + file.name + ' locally…';
+  setUploadProgress(edition, {state: 'checking', message: 'Checking ' + file.name + '…'});
   updateGameEditions(); controls();
   try {
     if (!file.name.toLowerCase().endsWith('.jsdos')) throw new Error('Choose the converted London .jsdos bundle.');
@@ -565,6 +583,7 @@ async function checkLondonBundle(edition, file) {
     const editions = await inspectBundleEditions(file);
     const verification = await verifyEditionBundle(file, edition, editions);
     londonSources[edition] = { file, kind: 'jsdos', from: 'london', editions, verification };
+    setUploadProgress(edition, {state: 'ready', message: 'Verified ' + file.name + ' (' + verification.fileCount + ' entries; gameplay not tested)'});
     $(statusId).textContent = 'Verified ' + file.name + ' (' + verification.fileCount + ' ZIP entries). ' +
       verification.note + ' Gameplay still requires testing.';
     updateGameEditions();
@@ -574,6 +593,7 @@ async function checkLondonBundle(edition, file) {
     status(label + ' is structurally compatible. Choose Play GTA to test the game.', 'MISSION PACK READY');
   } catch (error) {
     londonSources[edition] = null;
+    setUploadProgress(edition, {state: 'error', message: file.name + ' — ' + error.message});
     $(statusId).textContent = 'Not compatible with ' + label + ': ' + error.message;
     status(label + ' file check failed: ' + error.message, 'INVALID MISSION PACK');
   } finally {
@@ -589,15 +609,17 @@ $('game-edition').addEventListener('change', () => {
   updateMobileNotice();
   controls();
 });
-$('add-file').addEventListener('change', () => {
-  const target = $('add-file').value;
-  $('add-file').value = ''; // Allow selecting the same edition repeatedly.
-  const pickerId = {gta:'game', london69:'london69-file', london61:'london61-file'}[target];
-  if (!pickerId) return;
-  const picker = $(pickerId);
-  picker.value = ''; // Selecting the same file again must repeat verification.
-  picker.click();
-});
+for (const button of document.querySelectorAll('[data-upload-edition]')) {
+  button.addEventListener('click', () => {
+    const target = button.dataset.uploadEdition;
+    const pickerId = {gta: 'game', london69: 'london69-file', london61: 'london61-file'}[target];
+    if (!pickerId || button.disabled) return;
+    $('add-file-menu').open = false;
+    const picker = $(pickerId);
+    picker.value = ''; // Selecting the same file repeats validation.
+    picker.click(); // Synchronous with button click: browser permits file dialogue.
+  });
+}
 function handleGraphicsChange(value) {
   const mode = setGraphicsMode(value);
   status(GRAPHICS_PRESETS[mode].description + ' Original GTA assets are unchanged.', 'GRAPHICS: ' + GRAPHICS_PRESETS[mode].label.toUpperCase());
