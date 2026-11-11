@@ -13,7 +13,7 @@ function nameOf(name) {
   return name.replace(/\\/g, '/').replace(/^(\.\/)+/, '').toUpperCase();
 }
 function dosboxAutoexec(conf) {
-  const match = /^\[autoexec\]\s*$/im.exec(conf);
+  const match = /^\[autoexec\][ \t]*(?:\r?\n|$)/im.exec(conf);
   if (!match) return null;
   const rest = conf.slice(match.index + match[0].length);
   const section = /^\[[^\]\r\n]+\]\s*$/m.exec(rest);
@@ -84,13 +84,39 @@ export function patchAutoexecGame(conf, mode) {
   return autoexec.before + updated.join('\n') + autoexec.after;
 }
 
+/**
+ * Keep every existing mount, driver and GTA command in place; silence echoed
+ * command lines and clear the initial DOS banner only. This cannot skip a
+ * video-driver prompt that genuinely waits for keyboard input.
+ */
+export function patchQuietBoot(conf) {
+  const autoexec = dosboxAutoexec(conf);
+  if (!autoexec) throw new Error('No [autoexec] section found for quiet startup.');
+  const newline = conf.includes('\r\n') ? '\r\n' : '\n';
+  // If the file is already quiet, do not append more commands.
+  const firstCommands = autoexec.commands.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const hasEcho = firstCommands.some(line => /^@?echo\s+off$/i.test(line));
+  const hasCls = firstCommands.some(line => /^@?cls$/i.test(line));
+  const additions = [!hasEcho ? '@echo off' : null, !hasCls ? 'cls' : null].filter(Boolean);
+  if (!additions.length) return conf;
+  const before = autoexec.before.endsWith('\n') ? autoexec.before : autoexec.before + newline;
+  const separator = /^\r?\n/.test(autoexec.commands) ? '' : newline;
+  return before + additions.join(newline) + separator + autoexec.commands + autoexec.after;
+}
+
 // The patched archive is assembled using Blob slices: the original 750+ MB bundle
 // is not loaded as one huge ArrayBuffer. The old ZIP central directory remains inert
 // and a new ZIP central directory is appended after a replacement DOSBox config entry.
-export async function bundleWithGameMode(file, inspection, mode) {
-  if (mode === 'auto') return file;
-  if (!inspection?.available?.includes(mode)) throw new Error('This game mode is not available in the selected bundle.');
-  const newConf = patchAutoexecGame(inspection.config, mode);
+export async function bundleWithGameMode(file, inspection, mode, { quiet = false } = {}) {
+  if (mode === 'auto' && !quiet) return file;
+  if (mode !== 'auto' && !inspection?.available?.includes(mode)) throw new Error('This game mode is not available in the selected bundle.');
+  if (typeof inspection?.config !== 'string') {
+    if (mode === 'auto') return file; // Preserve working unknown archive layout.
+    throw new Error('DOSBox startup configuration could not be inspected.');
+  }
+  const variantConf = mode === 'auto' ? inspection.config : patchAutoexecGame(inspection.config, mode);
+  const newConf = quiet ? patchQuietBoot(variantConf) : variantConf;
+  if (newConf === inspection.config) return file;
   const zip = await readZipIndex(file);
   const entry = zip.entries.find(e => nameOf(e.name) === CONFIG_PATH.toUpperCase());
   if (!entry) throw new Error('DOSBox configuration not found in the bundle.');

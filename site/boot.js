@@ -4,8 +4,10 @@
  */
 export function shouldMaskDosStartup(kind, boot, chosenEdition) {
   if (kind !== 'jsdos') return false;
-  return chosenEdition === 'gta8' || chosenEdition === 'gta24'
-    || boot === 'gta8' || boot === 'gta24';
+  // A valid .jsdos bundle can start through GTA.BAT, another launcher, or
+  // an indirect command. Always mask its initial DOS text. The user retains
+  // both Show game and Show DOS escape hatches if manual input is required.
+  return true;
 }
 
 export function isGtaProgram(runningProgram) {

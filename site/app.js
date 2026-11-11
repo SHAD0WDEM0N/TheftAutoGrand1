@@ -142,6 +142,7 @@ function controls() {
   $('render-backend').disabled = busy || active;
   $('game').disabled = busy || active || checkingSource;
   $('gta-edition').disabled = busy || active || checkingSource;
+  $('quiet-startup').disabled = busy || active || checkingSource;
   $('play').disabled = busy || active || checkingSource || !playableSource()
     || mobileNeedsOverride(playableSource()?.from === 'saved');
   $('demo').disabled = busy || active;
@@ -290,12 +291,14 @@ async function launch(demo = false) {
       if (chosenMode !== 'auto' && !edition?.available?.includes(chosenMode)) {
         throw new Error('This GTA graphics edition is not verified as available in the selected game bundle.');
       }
-      const startBundle = chosenMode === 'auto' ? file : await bundleWithGameMode(file, edition, chosenMode);
+      const quiet = $('quiet-startup').checked;
+      const startBundle = await bundleWithGameMode(file, edition, chosenMode, { quiet });
       bundleUrl = URL.createObjectURL(startBundle);
       source.url = bundleUrl;
-      status(chosenMode === 'auto'
-        ? 'Starting with the original DOS startup configuration.'
-        : 'Starting selected ' + (chosenMode === 'gta24' ? 'high-colour GTA24.EXE' : 'standard GTA8.EXE') + ' configuration.', 'STARTING');
+      status((chosenMode === 'auto'
+        ? 'Starting with the original GTA launch commands.'
+        : 'Starting ' + (chosenMode === 'gta24' ? 'high-colour GTA24.EXE' : 'standard GTA8.EXE') + '.') +
+        (quiet && startBundle !== file ? ' Quiet DOS startup enabled.' : ''), 'STARTING');
     }
     else {
       source.dosboxConf = configuration(kind === 'iso', $('commands').value);
@@ -309,7 +312,7 @@ async function launch(demo = false) {
     if (!demo && shouldMaskDosStartup(kind, sourceInfo?.editions?.boot, $('gta-edition').value)) {
       showBootSplash();
     } else {
-      hideBootSplash(); // Installer ISOs and unknown DOS startup scripts need a visible shell.
+      hideBootSplash(); // Installer ISOs need a visible shell for manual install commands.
     }
     player = window.Dos($('player'), {
       ...source, pathPrefix: CDN + 'emulators/', backend: 'dosbox', backendLocked: true,

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
-import { inspectBundleEditions, bundleWithGameMode, patchAutoexecGame, readZipIndex } from '../site/editions.js';
+import { inspectBundleEditions, bundleWithGameMode, patchAutoexecGame, patchQuietBoot, readZipIndex } from '../site/editions.js';
 
 function makeBundle(files, config = [
   '[sdl]', 'autolock=false',
@@ -119,4 +119,41 @@ test('compressed ZIP DOSBox config can be read and replaced without modifying or
   const switched = await inspectBundleEditions(replacement);
   assert.equal(switched.boot, 'gta24');
   assert.equal((await inspectBundleEditions(file)).boot, 'gta8');
+});
+
+test('quiet startup adds DOS banner clearing without dropping game or drive commands', () => {
+  const original = '[cpu]\ncycles=max\n[autoexec]\nmount c .\nc:\ncd GTA\nGTA24.EXE\n';
+  const quiet = patchQuietBoot(original);
+  assert.match(quiet, /\[cpu\]\ncycles=max/);
+  assert.match(quiet, /\[autoexec\]\n@echo off\ncls\nmount c \.\nc:\ncd GTA\nGTA24\.EXE/);
+  assert.equal(patchQuietBoot(quiet), quiet);
+  assert.equal(original.includes('cls'), false);
+});
+
+test('quiet startup can retain an existing echo off and handle Windows line endings', () => {
+  const input = '[cpu]\r\ncycles=max\r\n[autoexec]\r\n@echo off\r\nmount c .\r\nc:\r\nGTA8.EXE\r\n';
+  const quiet = patchQuietBoot(input);
+  assert.match(quiet, /cls\r\n@echo off\r\nmount c \./);
+  assert.match(quiet, /GTA8\.EXE/);
+});
+
+test('quiet mode patches original GTA8 archive in memory without changing the source', async () => {
+  const file = makeBundle(['GTADOS/GTA8.EXE','GTADOS/GTA24.EXE']);
+  const inspection = await inspectBundleEditions(file);
+  const patched = await bundleWithGameMode(file, inspection, 'auto', {quiet:true});
+  assert.ok(patched.size > file.size);
+  const mode = await inspectBundleEditions(patched);
+  assert.equal(mode.boot, 'gta8');
+  assert.match(mode.config, /\bcls\b/i);
+  assert.equal((await inspectBundleEditions(file)).config, inspection.config);
+  assert.equal(await bundleWithGameMode(file, inspection, 'auto', {quiet:false}), file);
+});
+
+test('quiet mode preserves GTA24 selection, including compressed configuration bundles', async () => {
+  const file = makeBundle(['GTADOS/GTA8.EXE','GTADOS/GTA24.EXE'], undefined, true);
+  const inspection = await inspectBundleEditions(file);
+  const patched = await bundleWithGameMode(file, inspection, 'gta24', {quiet:true});
+  const result = await inspectBundleEditions(patched);
+  assert.equal(result.boot, 'gta24');
+  assert.match(result.config, /cls/);
 });

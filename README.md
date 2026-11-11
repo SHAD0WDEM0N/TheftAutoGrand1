@@ -10,6 +10,16 @@ Highlights: arrow keys to walk/steer, Enter to enter/exit cars and select menu i
 
 Controls references: [original GTA DOS manual](https://www.gamesdatabase.org/Media/SYSTEM/Microsoft_DOS/manual/Formated/Grand_Theft_Auto.pdf) and [GTA 1997 controls](https://gta.fandom.com/wiki/Controls_for_GTA_%281997_game%29).
 
+## Boot Cleanup Phase 3 — quiet, reversible startup
+
+The **Quiet DOS startup** checkbox on the launch screen is enabled by default for your private `.jsdos` game. It creates a **temporary in-browser copy of the archive's DOSBox startup configuration**, adding `@echo off` and `cls` as needed. This suppresses most command echo and clears the initial DOS banner, but it **does not suppress every message produced by DOSBox or a game utility**. The original bundle, executable, saved data and settings remain unchanged. Untick the box to use the exact original startup configuration.
+
+The loading cover now starts for **every verified private `.jsdos`**, even if it launches via an indirect `GTA.BAT` or another batch script. Previously the cover applied only to bundles explicitly launching `GTA8.EXE` or `GTA24.EXE`. Raw ISO imports remain visible so DOS installation commands can be entered.
+
+A **SciTech Display Doctor mode-analysis prompt** may still block an unattended start. The existing **Skip video-mode test (Esc)** button sends Esc only at your request, and **Show game** / **Show DOS / troubleshoot** remain available. This phase intentionally does not remove SciTech executable calls or skip unknown installation steps automatically; doing so without inspecting the personal game's startup scripts risks breaking video modes. If a prompt continues to appear, the next step is to inspect the DOSBox `[autoexec]` lines and any referenced startup batch scripts in your own bundle.
+
+Verified with automated tests for original and compressed ZIP bundles, GTA8/GTA24 switching, line endings, exact-source preservation, and unknown batch launches. A Windows test with the real game is still necessary to confirm the visible startup improvement.
+
 ## Enhanced Graphics Phase 2 — real Scale2x + safer GTA24 boot (built in)
 
 ### Before starting GTA

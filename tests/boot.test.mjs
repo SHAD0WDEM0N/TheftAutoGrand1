@@ -12,7 +12,7 @@ test('only known direct GTA8/GTA24 bundle starts get a hidden DOS boot', () => {
   assert.equal(shouldMaskDosStartup('jsdos', 'gta24', 'auto'), true);
   assert.equal(shouldMaskDosStartup('jsdos', 'gta8', 'gta24'), true);
   assert.equal(shouldMaskDosStartup('jsdos', 'unknown', 'gta24'), true);
-  assert.equal(shouldMaskDosStartup('jsdos', 'unknown', 'auto'), false);
+  assert.equal(shouldMaskDosStartup('jsdos', 'unknown', 'auto'), true); // GTA.BAT and unknown startup stay behind cover
   assert.equal(shouldMaskDosStartup('iso', 'gta8', 'auto'), false);
   assert.equal(shouldMaskDosStartup(null, 'gta24', 'gta24'), false);
 });
@@ -42,9 +42,9 @@ test('startup splash stays hidden by default and remains manually dismissible', 
   assert.match(app, /async function end\(\) \{\s*hideBootSplash\(\)/);
 });
 
-test('unknown DOS batches and installer ISOs do not get hidden', () => {
+test('unknown private jsdos launchers stay masked; raw installer ISOs remain visible', () => {
   assert.match(app, /shouldMaskDosStartup\(kind, sourceInfo\?\.editions\?\.boot, \$\('gta-edition'\)\.value\)/);
-  assert.match(app, /Installer ISOs and unknown DOS startup scripts need a visible shell/);
+  assert.match(app, /Installer ISOs need a visible shell/);
 });
 
 
@@ -82,4 +82,10 @@ test('optional install retains a private local copy and never uploads files', ()
   assert.match(app, /savedSourceReady = true/);
   assert.match(app, /fileWasChosen = false/);
   assert.match(app, /savedShortcut && !confirm\(/);
+});
+
+test('quiet startup checkbox affects only the jsdos temporary boot config', () => {
+  assert.match(html, /id="quiet-startup" type="checkbox" checked/);
+  assert.match(app, /bundleWithGameMode\(file, edition, chosenMode, \{ quiet \}\)/);
+  assert.match(app, /\$\('quiet-startup'\)\.checked/);
 });

@@ -49,6 +49,10 @@
               <option value="vibrant">Enhanced HD + vivid colour</option>
               <option value="crt">CRT Classic</option>
             </select>
+            <label class="quiet-startup-option" for="quiet-startup">
+              <input id="quiet-startup" type="checkbox" checked>
+              <span>Quiet DOS startup <small>Hide command echoes, keep game launch intact</small></span>
+            </label>
             <button id="play" type="button" class="play-button" disabled>▶ Play GTA</button>
             <button id="add-file" type="button" class="load-button">+ Add File</button>
             <button id="install-local" type="button" class="local-install" disabled hidden>Remember this game on this PC</button>
@@ -185,6 +189,7 @@ dir</textarea>
             <option value="canvas">Canvas (compatibility fallback)</option>
           </select>
           <p class="hint">Choose before launching GTA; switching requires ending and restarting the game.</p>
+          <p><strong>Boot Cleanup</strong> uses the original GTA .jsdos archive and adds a temporary <code>@echo off</code> / <code>cls</code> startup patch when Quiet DOS startup is enabled. It never edits your Datafile.jsdos and never automatically skips SciTech Display Doctor input prompts. Turn it off to use the exact original configuration, or choose Show DOS while starting.</p>
           <p><strong>Check GTA version</strong> reports the running DOS executable. Retail GTA may include GTA8.EXE and GTA24.EXE; higher-resolution modes are more likely to be available in the 24-bit version.</p>
           <p><strong>Screen mode (F11)</strong> sends GTA's documented video-mode key while the game runs. It may do nothing in certain game states or editions, and does not itself force 1080p or the maximum mode.</p>
           <p>GTA saves its resolution preference in GTADATA/PLAYER_A.DAT. To keep a confirmed setting, export an updated private .jsdos backup after changing it. Never edit the original game's save data without a backup.</p>
