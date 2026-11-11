@@ -265,7 +265,14 @@ async function launch(demo = false) {
           ci = value; clearTimeout(timer); controls();
           if (bootSplashActive) { watchGtaFrames(ci); watchGtaStartup(); }
           ci.events().onFrameSize((width, height) => { if (width > 0 && height > 0) $('video-mode').textContent = 'Native: ' + width + '×' + height; });
-          status(demo ? 'DOS smoke test running. Look for “Emulator smoke test: OK” in the terminal.' : quick ? 'Starting your saved GTA shortcut. Click the game picture for keyboard control.' : 'DOS is running. Check the terminal for mount results, then install or launch your game.', 'DOS RUNNING');
+          status(bootSplashActive
+            ? 'Launching GTA in the background…'
+            : demo
+              ? 'DOS smoke test running. Look for “Emulator smoke test: OK” in the terminal.'
+              : quick
+                ? 'Starting your saved GTA shortcut. Click the game picture for keyboard control.'
+                : 'DOS is running. Check the terminal for mount results, then install or launch your game.',
+            bootSplashActive ? 'STARTING GTA' : 'DOS RUNNING');
           ci.events().onMessage((type, ...args) => {
             if (type !== 'error') return;
             const message = args.join(' ');
