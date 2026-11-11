@@ -65,9 +65,12 @@
 
     <div class="player-bar">
       <div class="graphics-controls">
-        <label for="display-mode">Picture</label>
-        <select id="display-mode" aria-label="Picture quality">
-          <option value="pixelated">Sharp pixels (recommended)</option>
+        <label for="graphics-preset">Graphics</label>
+        <select id="graphics-preset" aria-label="Built-in graphics enhancement preset">
+          <option value="original">Original</option>
+          <option value="enhanced">Enhanced Pixels</option>
+          <option value="vibrant">Vibrant Classic</option>
+          <option value="crt">CRT Classic</option>
         </select>
         <span class="aspect-lock" title="Classic GTA is always displayed in a 4:3 viewport, including fullscreen.">Display · 4:3 locked</span>
         <span id="video-mode" class="video-mode" aria-live="polite">Native: —</span>
@@ -131,7 +134,8 @@ dir</textarea>
           <p><strong>Check GTA version</strong> reports the running DOS executable. Retail GTA may include GTA8.EXE and GTA24.EXE; higher-resolution modes are more likely to be available in the 24-bit version.</p>
           <p><strong>Screen mode (F11)</strong> sends GTA's documented video-mode key while the game runs. It may do nothing in certain game states or editions, and does not itself force 1080p or the maximum mode.</p>
           <p>GTA saves its resolution preference in GTADATA/PLAYER_A.DAT. To keep a confirmed setting, export an updated private .jsdos backup after changing it. Never edit the original game's save data without a backup.</p>
-          <p><strong>Sharp pixels</strong> stays enabled to avoid the blurry smoothing effect. The game remains limited by GTA's original DOS graphics resolution.</p>
+          <p><strong>Enhanced Graphics — Phase 1</strong> is part of this website, with no extra downloads or mod installation. Original, Enhanced Pixels, Vibrant Classic and CRT Classic switch instantly during gameplay. All modes keep sharp pixel scaling and 4:3 output.</p>
+          <p>Phase 1 adds lightweight colour/contrast treatments and optional subtle CRT scanlines. It does <strong>not</strong> change GTA textures, redraw sprites, implement xBR/Scale2x, or raise the game's native resolution. Those are future phases.</p>
           <p><strong>Aspect ratio is locked to 4:3</strong>, including fullscreen. On widescreen monitors, black side bars keep GTA from stretching to 16:9. Original VGA resolutions such as 320×200 are shown with classic CRT-style aspect correction.</p>
           <p><strong>Verify before Play</strong> checks the ISO or .jsdos archive structure and prepares the emulator code; it does not run GTA or precompile every graphics operation. Full gameplay compatibility is only confirmed when you start the game.</p>
           <p><strong>Save screenshot</strong> captures the game's native framebuffer as a local PNG for troubleshooting. A fullscreen monitor does not increase its native pixel dimensions.</p>

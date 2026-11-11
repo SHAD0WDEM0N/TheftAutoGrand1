@@ -282,3 +282,41 @@ textarea { background: #0c1113; color: var(--text); border: 1px solid var(--stro
   font-weight: 700;
 }
 .boot-show-game:hover { background: #ffbd90; }
+
+/* Built-in Enhanced Graphics — Phase 1.
+   These are presentation-only filters, not replacement game textures.
+   Pixel interpolation remains 'pixelated' in js-dos for every preset. */
+#stage-frame[data-graphics="original"] #player { filter: none; }
+#stage-frame[data-graphics="enhanced"] #player {
+  filter: contrast(1.07) saturate(1.12) brightness(1.015);
+}
+#stage-frame[data-graphics="vibrant"] #player {
+  filter: contrast(1.13) saturate(1.30) brightness(1.02);
+}
+#stage-frame[data-graphics="crt"] #player {
+  filter: contrast(1.07) saturate(1.08) brightness(1.025);
+}
+/* CRT effect is a passive overlay above gameplay. It never captures input,
+   does not filter the emulator's source pixels and is hidden over boot UI. */
+.game-window.is-playing #stage-frame[data-graphics="crt"]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(100%, 133.333dvh);
+  height: auto;
+  aspect-ratio: 4 / 3;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, .11) 3px
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Static filters only; no CRT animation or per-frame JS work. */
+  .game-window.is-playing #stage-frame[data-graphics="crt"]::after { animation: none; }
+}

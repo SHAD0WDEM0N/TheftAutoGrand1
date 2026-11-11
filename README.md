@@ -2,6 +2,25 @@
 
 A minimal, gameplay-first browser launcher for a personally owned **DOS edition of Grand Theft Auto (1997)**. No game, disc image, installer, artwork, or music is distributed here. Select a file on your device; the application reads it into browser memory rather than uploading it.
 
+## Enhanced Graphics — Phase 1 (built into the website)
+
+**No mod download, separate installer, game file modification, or third-party graphics assets.** Phase 1's own source is committed in `site/graphics.js`, `site/style.css`, `site/index.html` and `site/app.js`, so it ships automatically with GitHub Pages. It works with GTA8.EXE and GTA24.EXE because it affects the rendered browser picture, not the DOS game's own files.
+
+The **Graphics** dropdown below the player has four presets:
+
+| Preset | Rendering effect | Notes |
+| --- | --- | --- |
+| **Original** | Sharp pixels, no additional colour filters. | Recommended baseline for comparison and troubleshooting. |
+| **Enhanced Pixels** | Slightly more contrast and saturation with sharp pixels. | Phase 1 colour correction only, *not* xBR or true edge-aware enlargement. |
+| **Vibrant Classic** | More noticeable saturation and contrast. | Optional more colourful GTA look. |
+| **CRT Classic** | Light colour adjustment and subtle, static scanlines. | Transparent overlay never catches game input. |
+
+Presets switch instantly without ending the DOSBox session. The preferred preset is saved as a small local browser setting; if storage is disabled or invalid, the launcher falls back to Original. The graphics code is small and has **no per-frame JavaScript image processing**. It preserves the sharp, non-blurry js-dos interpolation and the existing **4:3 letterbox** in windowed and fullscreen modes.
+
+**Limitations:** Phase 1 is intentionally a lightweight visual foundation. It does **not** add higher-resolution game art, replacement sprites, textures, shadows, xBR, Scale2x, a new native GTA engine, or a higher internal video mode. The F11 setting still controls the real GTA framebuffer size. These effects do not modify a screenshot exported using the native js-dos framebuffer capture; to show the visible filter effects in a picture, use the operating system's screen capture. No GTA data is distributed or hosted.
+
+**Phase 1 test on Windows:** Open the deployed Pages site, add your existing private `.jsdos` bundle, play GTA8 and GTA24 and switch all four Graphics presets. Verify that it remains sharp and 4:3 in windowed/fullscreen, that CRT lines are subtle, that performance is stable, and that Original restores the original presentation. Real-game visual quality still requires your feedback because CI doesn't contain the licensed GTA files.
+
 ## Direct-to-game startup (hide DOS boot text)
 
 For a verified `.jsdos` bundle with a **direct GTA8.EXE or GTA24.EXE startup**, the player now shows a minimal **Starting GTA…** cover while DOSBox runs the original commands in the background. It polls js-dos's `getRunningProgram()` to detect GTA8 or GTA24, then reveals the game's own title/menu after a brief rendering delay. The existing one-button **Add File → Play GTA** flow and the version selector are unchanged. No Rockstar game assets are added or uploaded, and **the original `.jsdos` file does not need rebuilding**.
