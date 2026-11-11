@@ -5,6 +5,7 @@ import { isGtaProgram, shouldMaskDosStartup, looksLikeGameFrame, shouldAutoSkipV
 import { applyGraphicsPreset, GRAPHICS_STORAGE_KEY, normalizeGraphicsPreset, GRAPHICS_PRESETS } from './graphics.js';
 import { canScale2x, needsEnhancedScale2x, scale2xFrame, SCALE2X_FRAME_INTERVAL_MS } from './scale2x.js';
 import { createSmartRenderer, canGpuUpscale, GPU_FRAME_INTERVAL_MS } from './gpu-upscale.js';
+import { verifyEditionBundle } from './edition-verify.js';
 const $ = (id) => document.getElementById(id);
 const CDN = 'https://cdn.jsdelivr.net/npm/js-dos@8.5.3/dist/';
 let player = null, ci = null, bundleUrl = null, busy = false, active = false, paused = false, timer;
@@ -26,19 +27,26 @@ function chosenGameSource() {
 }
 function updateGameEditions() {
   const base = !!playableSource();
-  const available69 = base && !!londonSources.london69;
-  const available61 = available69 && !!londonSources.london61;
+  const ready69 = !!londonSources.london69;
+  const ready61 = !!londonSources.london61;
+  const available69 = base && ready69;
+  const available61 = available69 && ready61;
   for (const option of $('game-edition').options) {
     if (option.value === 'london69') {
       option.disabled = !available69;
-      option.textContent = 'London 1969' + (available69 ? '' : ' — add GTA + London 1969 bundle');
+      option.textContent = 'London 1969' + (available69 ? '' : ' — needs GTA + Mission Pack 1');
     }
     if (option.value === 'london61') {
       option.disabled = !available61;
-      option.textContent = 'London 1961' + (available61 ? '' : ' — needs GTA + London 1969 + 1961');
+      option.textContent = 'London 1961' + (available61 ? '' : ' — needs GTA + both mission packs');
     }
   }
   if ($('game-edition').selectedOptions[0]?.disabled) $('game-edition').value = 'gta';
+  $('gta-upload-state').textContent = 'GTA 1997: ' + (base ? 'File ready' : 'Not loaded');
+  $('london69-upload-state').textContent = 'Mission Pack 1 (1969): ' +
+    (available69 ? 'Compatible file structure · Selectable' : ready69 ? 'Verified · Add GTA data to unlock' : 'Not loaded');
+  $('london61-upload-state').textContent = 'Mission Pack 2 (1961): ' +
+    (available61 ? 'Compatible file structure · Selectable' : ready61 ? 'Verified · Add prerequisite files to unlock' : 'Not loaded');
 }
 function clearGpu() {
   $('gpu-canvas').hidden = true;
@@ -189,7 +197,7 @@ function releaseHeldKeys() {
 function status(message, badge) { $('status').textContent = message; if (badge) $('badge').textContent = badge; }
 function controls() {
   $('player').closest('.game-window').classList.toggle('is-playing', active);
-  $('add-file').disabled = busy || active || checkingSource;
+  $('add-file').disabled = busy || active || checkingSource || londonChecking;
   const canInstall = !busy && !active && !checkingSource && selectedSource?.from === 'file' && selectedSource.kind === 'jsdos';
   $('install-local').hidden = !selectedSource || selectedSource.kind !== 'jsdos' || selectedSource.from !== 'file';
   $('install-local').disabled = !canInstall;
@@ -531,6 +539,7 @@ async function checkAddedFile(file) {
     updateMobileNotice();
   } catch (error) {
     if (generation !== checkGeneration) return;
+    updateGameEditions();
     showFileState('File check failed: ' + error.message, 'error');
     status('File check failed: ' + error.message, 'INVALID FILE');
   } finally {
@@ -542,31 +551,31 @@ $('game').addEventListener('change', () => {
   if (file) void checkAddedFile(file);
 });
 async function checkLondonBundle(edition, file) {
-  const label = edition === 'london69' ? 'London 1969' : 'London 1961';
+  const label = edition === 'london69' ? 'Mission Pack 1 (London 1969)' : 'Mission Pack 2 (London 1961)';
   const statusId = edition === 'london69' ? 'london69-status' : 'london61-status';
-  if (!file) {
-    londonSources[edition] = null;
-    $(statusId).textContent = 'No ' + label + ' bundle added.';
-    updateGameEditions(); controls();
-    return;
-  }
+  if (!file) return;
   londonChecking = true;
   londonSources[edition] = null;
   $(statusId).textContent = 'Checking ' + file.name + ' locally…';
   updateGameEditions(); controls();
   try {
-    if (!file.name.toLowerCase().endsWith('.jsdos')) throw new Error('Use a prepared DOS .jsdos bundle, not a Windows installer or raw disc image.');
+    if (!file.name.toLowerCase().endsWith('.jsdos')) throw new Error('Choose the converted London .jsdos bundle.');
     const inspected = await inspectGameFile(file);
-    if (inspected.kind !== 'jsdos') throw new Error('This is not a valid DOS .jsdos game bundle.');
+    if (inspected.kind !== 'jsdos') throw new Error('Not a valid .jsdos DOS game bundle.');
     const editions = await inspectBundleEditions(file);
-    // This is structure validation, not proof that all London expansion
-    // dependencies are present or that its executable will boot successfully.
-    londonSources[edition] = { file, kind:'jsdos', from:'london', editions };
-    $(statusId).textContent = 'Ready to test: ' + file.name + ' (' + (file.size/1048576).toFixed(1) + ' MiB). Bundle structure checked; London game boot not verified.';
-    status(label + ' bundle checked locally. Select the edition before Play.', 'LONDON FILE READY');
+    const verification = await verifyEditionBundle(file, edition, editions);
+    londonSources[edition] = { file, kind: 'jsdos', from: 'london', editions, verification };
+    $(statusId).textContent = 'Verified ' + file.name + ' (' + verification.fileCount + ' ZIP entries). ' +
+      verification.note + ' Gameplay still requires testing.';
+    updateGameEditions();
+    if (!$('game-edition').querySelector('[value="' + edition + '"]').disabled) {
+      $('game-edition').value = edition;
+    }
+    status(label + ' is structurally compatible. Choose Play GTA to test the game.', 'MISSION PACK READY');
   } catch (error) {
-    $(statusId).textContent = 'Unable to use ' + label + ': ' + error.message;
-    status(label + ' bundle validation failed: ' + error.message, 'INVALID FILE');
+    londonSources[edition] = null;
+    $(statusId).textContent = 'Not compatible with ' + label + ': ' + error.message;
+    status(label + ' file check failed: ' + error.message, 'INVALID MISSION PACK');
   } finally {
     londonChecking = false;
     updateGameEditions(); updateMobileNotice(); controls();
@@ -580,7 +589,15 @@ $('game-edition').addEventListener('change', () => {
   updateMobileNotice();
   controls();
 });
-$('add-file').addEventListener('click', () => $('game').click());
+$('add-file').addEventListener('change', () => {
+  const target = $('add-file').value;
+  $('add-file').value = ''; // Allow selecting the same edition repeatedly.
+  const pickerId = {gta:'game', london69:'london69-file', london61:'london61-file'}[target];
+  if (!pickerId) return;
+  const picker = $(pickerId);
+  picker.value = ''; // Selecting the same file again must repeat verification.
+  picker.click();
+});
 function handleGraphicsChange(value) {
   const mode = setGraphicsMode(value);
   status(GRAPHICS_PRESETS[mode].description + ' Original GTA assets are unchanged.', 'GRAPHICS: ' + GRAPHICS_PRESETS[mode].label.toUpperCase());

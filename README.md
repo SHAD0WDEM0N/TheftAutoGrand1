@@ -1,3 +1,11 @@
+## Edition-aware Add game files menu
+
+The GTA launch screen now has a three-option **Add game files** dropdown replacing the former generic Add File button. Select **Add GTA Data File**, **Add Mission Pack 1 Data File — London 1969**, or **Add Mission Pack 2 Data File — London 1961**. Each choice opens the appropriate private file picker. A visible three-line status panel reports which slot is loaded, and a structurally verified mission pack automatically selects its playable edition when prerequisites are present.
+
+Mission pack validation goes further than the generic ZIP check: it inspects the archive directory for the edition's DOS executables, shared London files and the appropriate batch script, then checks that the embedded DOSBox `[autoexec]` configuration calls **london.bat** (1969) or **London61.bat** (1961). Unsupported/mislabelled bundles show explicit errors and cannot unlock the edition selector. The exact converted files `GTA-London-1969_DOS.jsdos` and `GTA-London-1961_DOS.jsdos` have the expected layouts. It does **not** prove that the game launches correctly under js-dos or that a copy contains all original game resources; the user still needs to test gameplay.
+
+London 1969 becomes selectable once the GTA 1997 bundle and structurally valid London 1969 bundle are loaded. London 1961 becomes selectable once all three have been loaded and verified. Files remain on the user's PC, and no copyrighted game files are committed to GitHub.
+
 ## Enhanced Graphics Phase 3 and GTA London uploads
 
 **Smart HD · GPU** is a new, opt-in graphics mode available before launching and during gameplay. It applies a dependency-free WebGL1 fragment shader that analyses adjacent DOS pixels for diagonal edge reconstruction, aiming to improve sprites and scenery with less CPU work than Scale2x. It does **not** supply higher-resolution textures, change the internal GTA video mode, or perform an xBR remake. Source video modes up to 640×480 are supported, with the original sharp renderer remaining visible if WebGL is unavailable. Existing Original, Scale2x, Vibrant and CRT modes remain available. The added graphics engine is permanently in `site/gpu-upscale.js`; no external mod is installed.
