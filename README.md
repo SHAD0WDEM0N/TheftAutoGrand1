@@ -8,9 +8,17 @@ For a verified `.jsdos` bundle with a **direct GTA8.EXE or GTA24.EXE startup**, 
 
 This is a **visual startup cover**, not a hack that removes DOSBox or modifies GTA itself. It skips visible command-line text; the operating system/emulator still needs to boot normally. It also does not skip the game's copyright screens, intro, or title menu.
 
-**Safety fallbacks:** Select **Show DOS / troubleshoot** from the cover to expose the command prompt at any time. If GTA isn't detected within 45 seconds, the cover disappears automatically so you can inspect the DOS screen for installation prompts or errors. Unknown/batch-file-only startup sequences and raw ISOs are left visible by default because they may require user input. You can still **End game**, change graphics editions, or export backups as before.
+**Improved detection:** The player now watches both the running DOS executable and the emulator's graphical frames. This helps when the backend doesn't report GTA8/GTA24 reliably. The cover no longer drops you into DOS automatically after a timeout. At 12 seconds it offers troubleshooting advice, and you can always select **Show game** to reveal a dark title screen or **Show DOS / troubleshoot** if startup actually needs input. Unknown/batch-file-only startup sequences and raw ISOs remain visible by default, because those may require manual DOS commands.
 
 The automated tests cover GTA executable detection, conditional masking, and both fallback paths. A final Windows browser test with an owned GTA8/GTA24 bundle is still needed before confirming the menu-reveal timing.
+
+## Optional: install your personal GTA bundle in this browser
+
+To make the site behave more like an installed web game, use **Add File** to choose a working private `.jsdos` archive, wait for local verification, then click **Remember this game on this PC**. This saves the entire bundle inside your browser's **IndexedDB storage**, not the publicly hosted GitHub Pages files or an external server. Future visits to the same browser/profile can use **Play GTA** without opening Windows Explorer. GTA8/GTA24 remains selectable when the relevant executables are present.
+
+This is optional: existing **Add File → Play GTA** works without permanent storage, and you can keep using your original `.jsdos` file. The install action asks before replacing an existing browser-saved GTA copy, to avoid overwriting saved progress. Save inside GTA and periodically export a separate `.jsdos` backup: the browser can clear its private storage, or refuse to store a ~750 MiB game when disk quota is insufficient. The installed copy is local to this browser profile and isn't synced to other PCs.
+
+It is **not a native JavaScript port of Rockstar's GTA engine**: DOSBox still emulates the original game in the background. Building a true web-native GTA 1 implementation would require a different game port or compatible engine and separately licensed game resources. We will not redistribute GTA binaries in this public repo.
 
 ## Multiple GTA 1 graphics editions (Windows)
 
