@@ -10,6 +10,12 @@ Highlights: arrow keys to walk/steer, Enter to enter/exit cars and select menu i
 
 Controls references: [original GTA DOS manual](https://www.gamesdatabase.org/Media/SYSTEM/Microsoft_DOS/manual/Formated/Grand_Theft_Auto.pdf) and [GTA 1997 controls](https://gta.fandom.com/wiki/Controls_for_GTA_%281997_game%29).
 
+## Boot readiness fix — auto-reveal an already-running GTA
+
+The browser boot cover used to rely on js-dos frame callbacks to detect a colourful game frame, then show a 12-second \"taking longer than expected\" warning even if GTA was already running behind it. The player now checks occasional `ci.screenshot()` framebuffer images as an independent detection method. If two consecutive screenshots look like game graphics, it automatically reveals the display.
+
+For a running GTA8/GTA24 executable that cannot be confirmed visually (for example a dark title screen), the cover also reveals the picture after an 18-second grace period. This fallback carries a trade-off: if GTA is still displaying its own DOS diagnostic screen, that screen may briefly become visible. When the executable cannot be confirmed at all, the cover stays up with **Show game** and **Show DOS** buttons instead of exposing an unknown installer prompt. The user's game archive and existing launch commands are unchanged.
+
 ## Boot Cleanup Phase 3 — quiet, reversible startup
 
 The **Quiet DOS startup** checkbox on the launch screen is enabled by default for your private `.jsdos` game. It creates a **temporary in-browser copy of the archive's DOSBox startup configuration**, adding `@echo off` and `cls` as needed. This suppresses most command echo and clears the initial DOS banner, but it **does not suppress every message produced by DOSBox or a game utility**. The original bundle, executable, saved data and settings remain unchanged. Untick the box to use the exact original startup configuration.
