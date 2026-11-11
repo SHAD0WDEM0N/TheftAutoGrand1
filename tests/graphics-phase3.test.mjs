@@ -65,3 +65,17 @@ test('each game edition has its own DOS executable choice, while post-processing
   assert.match(html, /id="graphics-startup"/);
   assert.match(html, /id="gta-edition"/);
 });
+
+
+test('changing London edition reconstructs the executable selector before Play', () => {
+  const menu = html.indexOf('id="gta-edition"');
+  const play = html.indexOf('id="play"');
+  assert.ok(menu > 0 && menu < play, 'Graphics edition must appear before Play');
+  assert.match(app, /select\.replaceChildren\(\.\.\.modes\.map/);
+  assert.match(app, /new Option\(label, value\)/);
+  assert.match(app, /game === 'london69'/);
+  assert.match(app, /game === 'london61'/);
+  assert.match(app, /updateEditionOptions\(chosenGameSource\(\)\)/);
+  assert.match(html, /app\.js\?v=london-modes-20261111b/);
+  assert.match(html, /style\.css\?v=london-modes-20261111b/);
+});
