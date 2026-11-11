@@ -4,7 +4,11 @@ const $ = (id) => document.getElementById(id);
 const CDN = 'https://cdn.jsdelivr.net/npm/js-dos@8.5.3/dist/';
 let player = null, ci = null, bundleUrl = null, busy = false, active = false, paused = false, timer;
 let libraryPromise, bundleToolsPromise, savedShortcut = null;
+let isFullscreen = false;
+const RENDER_PREF_KEY = 'dos-garage-render-mode';
+const F11_KEY_CODE = 300;
 const idle = $('player').innerHTML;
+try { const stored = localStorage.getItem(RENDER_PREF_KEY); if (stored === 'smooth' || stored === 'pixelated') $('display-mode').value = stored; } catch { /* private-mode storage may be unavailable */ }
 const heldKeys = new Map();
 const isTouchDevice = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && matchMedia('(pointer:coarse)').matches);
 function tooLargeForMobile(file) { return mobileBundleRisk(file?.size || 0, isTouchDevice); }
@@ -33,6 +37,9 @@ function releaseHeldKeys() {
 
 function status(message, badge) { $('status').textContent = message; if (badge) $('badge').textContent = badge; }
 function controls() {
+  $('player').closest('.game-window').classList.toggle('is-playing', active);
+  $('pick-file').disabled = busy || active;
+  $('native-resolution').disabled = busy || !ci;
   $('game').disabled = busy || active;
   $('launch').disabled = busy || active || !$('game').files.length || mobileNeedsOverride();
   $('demo').disabled = busy || active;
@@ -77,7 +84,7 @@ async function end() {
   if (player) await player.stop();
   player = null; ci = null; active = false; paused = false;
   if (bundleUrl) URL.revokeObjectURL(bundleUrl);
-  bundleUrl = null; $('pause').textContent = 'Pause'; $('player').innerHTML = idle; controls();
+  bundleUrl = null; $('pause').textContent = 'Pause'; $('player').innerHTML = idle; $('video-mode').textContent = 'Native: —'; isFullscreen = false; $('fullscreen').textContent = 'Fullscreen'; controls();
 }
 async function launch(demo = false, quick = false) {
   busy = true; controls();
@@ -101,15 +108,18 @@ async function launch(demo = false, quick = false) {
         source.initFs = [{ path: 'disc.iso', contents: new Uint8Array(await file.arrayBuffer()) }];
       }
     }
-    $('player').replaceChildren(); active = true;
+    $('player').replaceChildren(); active = true; controls();
     player = window.Dos($('player'), {
       ...source, pathPrefix: CDN + 'emulators/', backend: 'dosbox', backendLocked: true,
       theme: 'dark', autoStart: true, countDownStart: 0, autoSave: false,
+      kiosk: true,
       softFullscreen: isTouchDevice,
-      fsChanges: { local: false }, renderAspect: '4/3', imageRendering: 'pixelated',
+      fsChanges: { local: false }, renderAspect: '4/3', imageRendering: $('display-mode').value,
       onEvent(event, value) {
+        if (event === 'fullscreen-change') { isFullscreen = Boolean(value); $('fullscreen').textContent = isFullscreen ? 'Exit fullscreen' : 'Fullscreen'; }
         if (event === 'ci-ready') {
           ci = value; clearTimeout(timer); controls();
+          ci.events().onFrameSize((width, height) => { if (width > 0 && height > 0) $('video-mode').textContent = 'Native: ' + width + '×' + height; });
           status(demo ? 'DOS smoke test running. Look for “Emulator smoke test: OK” in the terminal.' : quick ? 'Starting your saved GTA shortcut. Click the game picture for keyboard control.' : 'DOS is running. Check the terminal for mount results, then install or launch your game.', 'DOS RUNNING');
           ci.events().onMessage((type, ...args) => {
             if (type !== 'error') return;
@@ -139,12 +149,32 @@ $('game').addEventListener('change', () => {
   status('File selected locally. Launch to validate and load it.', 'READY TO IMPORT'); controls();
 });
 $('launch').addEventListener('click', () => launch());
+$('pick-file').addEventListener('click', () => {
+  $('tools-panel').open = true;
+  $('game').click();
+});
 $('demo').addEventListener('click', () => launch(true));
 $('quick-play').addEventListener('click', () => launch(false, true));
 $('quick-commands').addEventListener('input', controls);
 $('override-mobile').addEventListener('change', controls);
 $('pause').addEventListener('click', () => { paused = !paused; player.setPaused(paused); $('pause').textContent = paused ? 'Resume' : 'Pause'; });
-$('fullscreen').addEventListener('click', () => player.setFullScreen(true));
+$('fullscreen').addEventListener('click', () => {
+  if (!player) return;
+  player.setFullScreen(!isFullscreen);
+});
+$('display-mode').addEventListener('change', () => {
+  const mode = $('display-mode').value;
+  if (!['smooth', 'pixelated'].includes(mode)) return;
+  try { localStorage.setItem(RENDER_PREF_KEY, mode); } catch { /* optional display preference only */ }
+  if (player) player.setImageRendering(mode);
+  status(mode === 'smooth' ? 'Smooth scaling enabled. This filters the picture, but does not increase GTA’s internal resolution.' : 'Crisp pixels enabled. For original GTA video modes, press Game resolution (F11).', 'DISPLAY READY');
+});
+$('native-resolution').addEventListener('click', () => {
+  if (!ci || busy) return;
+  if (paused) { player.setPaused(false); paused = false; $('pause').textContent = 'Pause'; }
+  ci.simulateKeyPress(F11_KEY_CODE);
+  status('Sent F11 to GTA. Its internal resolution may change; the Native readout updates when the video mode changes.', 'GAME DISPLAY');
+});
 // Touch buttons hold the original DOS key down until the finger is released.
 // This is essential for steering/acceleration (a simulated tap does not work).
 for (const button of document.querySelectorAll('[data-hold-key]')) {
