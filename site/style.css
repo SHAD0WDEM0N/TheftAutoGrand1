@@ -213,3 +213,47 @@ textarea { background: #0c1113; color: var(--text); border: 1px solid var(--stro
   background: #000;
 }
 #stage-frame:fullscreen #player canvas { max-width: 100%; }
+
+/* While a known GTA DOS startup runs, show a lightweight loading surface.
+   The emulator continues booting behind this overlay. */
+.boot-splash {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0e161a;
+  color: var(--text);
+  padding: 24px;
+}
+.boot-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 350px;
+  text-align: center;
+  gap: 13px;
+}
+.boot-content strong { font-size: 20px; font-weight: 700; letter-spacing: .15px; }
+.boot-content p { margin: 0; color: var(--muted); line-height: 1.6; font-size: 12px; }
+.boot-spinner {
+  width: 27px;
+  height: 27px;
+  border: 3px solid #3b5657;
+  border-top-color: var(--accent-orange);
+  border-radius: 50%;
+  animation: gta-boot-spin 950ms linear infinite;
+}
+.boot-show-dos {
+  margin-top: 8px;
+  background: #1b2a2e;
+  color: #a7dfd8;
+  border: 1px solid #3e7470;
+  border-radius: 4px;
+  padding: 8px 13px;
+  font-size: 12px;
+  min-height: 38px;
+}
+@keyframes gta-boot-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .boot-spinner { animation: none; border-color: var(--accent-orange); } }

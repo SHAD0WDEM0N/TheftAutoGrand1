@@ -2,6 +2,16 @@
 
 A minimal, gameplay-first browser launcher for a personally owned **DOS edition of Grand Theft Auto (1997)**. No game, disc image, installer, artwork, or music is distributed here. Select a file on your device; the application reads it into browser memory rather than uploading it.
 
+## Direct-to-game startup (hide DOS boot text)
+
+For a verified `.jsdos` bundle with a **direct GTA8.EXE or GTA24.EXE startup**, the player now shows a minimal **Starting GTA…** cover while DOSBox runs the original commands in the background. It polls js-dos's `getRunningProgram()` to detect GTA8 or GTA24, then reveals the game's own title/menu after a brief rendering delay. The existing one-button **Add File → Play GTA** flow and the version selector are unchanged. No Rockstar game assets are added or uploaded, and **the original `.jsdos` file does not need rebuilding**.
+
+This is a **visual startup cover**, not a hack that removes DOSBox or modifies GTA itself. It skips visible command-line text; the operating system/emulator still needs to boot normally. It also does not skip the game's copyright screens, intro, or title menu.
+
+**Safety fallbacks:** Select **Show DOS / troubleshoot** from the cover to expose the command prompt at any time. If GTA isn't detected within 45 seconds, the cover disappears automatically so you can inspect the DOS screen for installation prompts or errors. Unknown/batch-file-only startup sequences and raw ISOs are left visible by default because they may require user input. You can still **End game**, change graphics editions, or export backups as before.
+
+The automated tests cover GTA executable detection, conditional masking, and both fallback paths. A final Windows browser test with an owned GTA8/GTA24 bundle is still needed before confirming the menu-reveal timing.
+
 ## Multiple GTA 1 graphics editions (Windows)
 
 This player can now inspect **your own local** `.jsdos` archive for the original GTA DOS executables and show the options that are actually present. Add File → choose your backup → **Graphics edition** appears beneath the Play GTA button. Nothing is uploaded or changed in your original archive.
