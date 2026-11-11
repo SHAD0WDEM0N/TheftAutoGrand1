@@ -76,3 +76,12 @@ test('readability and colourful accents do not introduce advertising sections', 
   assert.match(css, /--accent-gold:\s*#efcb7d/);
   assert.ok(!html.includes('Smooth scaling'));
 });
+
+test('F11 screen-mode control reports running DOS executable rather than promising a resolution', () => {
+  assert.ok(html.includes('id="inspect-program"'));
+  assert.ok(html.includes('id="program-info"'));
+  assert.match(script, /ci\.getRunningProgram\(\)/);
+  assert.match(script, /ci\.simulateKeyPress\(F11_KEY_CODE\)/);
+  assert.ok(html.includes('Screen mode (F11)'));
+  assert.ok(!html.includes('GTA display menu (F11)'));
+});
