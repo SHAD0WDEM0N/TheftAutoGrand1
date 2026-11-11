@@ -1,6 +1,11 @@
 // Game assets remain in this browser's IndexedDB; never sent to GitHub Pages.
 const DB_NAME = 'theft-auto-grand-private';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
+const SAVE_STORE = 'game-backups';
+const EDITIONS = ['gta', 'london69', 'london61'];
+function checkEdition(game) {
+  if (!EDITIONS.includes(game)) throw new Error('Unsupported game backup slot.');
+}
 const STORE = 'shortcuts';
 const KEY = 'gta';
 
@@ -11,6 +16,7 @@ function openDb() {
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(SAVE_STORE)) db.createObjectStore(SAVE_STORE, { keyPath: 'id' });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error || new Error('Could not open local game storage.'));
@@ -18,14 +24,14 @@ function openDb() {
   });
 }
 
-async function transaction(mode, makeRequest) {
+async function transaction(mode, makeRequest, storeName = STORE) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     let result = null;
     let tx;
     try {
-      tx = db.transaction(STORE, mode);
-      const request = makeRequest(tx.objectStore(STORE));
+      tx = db.transaction(storeName, mode);
+      const request = makeRequest(tx.objectStore(storeName));
       request.onsuccess = () => { result = request.result ?? null; };
       tx.oncomplete = () => { db.close(); resolve(result); };
       tx.onerror = () => { db.close(); reject(tx.error || new Error('Local storage failed.')); };
@@ -47,4 +53,27 @@ export function savePrivateShortcut(bundle, commands) {
 
 export function clearPrivateShortcut() {
   return transaction('readwrite', store => store.delete(KEY));
+}
+
+/**
+ * Only one latest complete filesystem backup per game, intentionally separate
+ * from the historical GTA quick-launch shortcut. A .jsdos filesystem archive
+ * is not an emulator CPU/RAM snapshot and cannot resume in the same frame.
+ */
+export function loadGameBackup(game) {
+  checkEdition(game);
+  return transaction('readonly', store => store.get(game), SAVE_STORE);
+}
+
+export function saveGameBackup(game, blob) {
+  checkEdition(game);
+  if (!(blob instanceof Blob) || !blob.size) throw new Error('Cannot store an empty DOS backup.');
+  return transaction('readwrite', store => store.put({
+    id: game, bundle: blob, savedAt: Date.now()
+  }), SAVE_STORE);
+}
+
+export function removeGameBackup(game) {
+  checkEdition(game);
+  return transaction('readwrite', store => store.delete(game), SAVE_STORE);
 }
