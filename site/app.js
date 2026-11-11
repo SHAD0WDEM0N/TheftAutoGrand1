@@ -22,6 +22,7 @@ function processEnhancedFrame(rgb, rgba) {
     canvas.hidden = true;
     return;
   }
+  if (!rgb && !rgba) return; // js-dos may emit empty frames during mode transitions.
   const w = ci.width(), h = ci.height();
   if (!canScale2x(w, h)) {
     canvas.hidden = true;
