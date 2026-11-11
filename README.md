@@ -17,6 +17,14 @@ The checks read small slices of the selected file, not an entire CD-sized image.
 
 The restrained palette now uses orange for Play, teal for file checks and gold for advanced controls rather than any landing-page promotional sections.
 
+## Original DOS GTA screen modes: confirmed details
+
+**F11 is documented** as a screen-mode key in the original GTA DOS documentation, but it does not guarantee an options menu in every game state or executable. In particular, some game discs ship separate `GTADOS/GTA8.EXE` (8-bit/VGA) and `GTADOS/GTA24.EXE` (24-bit DOS) launch targets. The 24-bit variant is the first to investigate for higher-colour/higher-resolution output. The latest launcher adds **Check GTA version** to query the running DOS executable using js-dos's `getRunningProgram()`, and displays the current framebuffer size next to it. It still does not automatically replace the executable or force an unverified high-resolution mode.
+
+A GTA settings file called `GTADATA/PLAYER_A.DAT` holds an option corresponding to display mode. Retail DOS and Classics/Steam files have different structures and should **not** be patched by guessing values. We should first establish the exact executable, version and best working resolution, then save/export a private `.jsdos` archive containing the confirmed settings. A new download of the game's original ISO is not automatically required: a new configured copy of the existing browser backup should be sufficient if the game data and writable settings are present. Keep your old backup.
+
+Original DOS versions do **not** gain native 1080p by changing browser canvas size or DOSBox's `fullresolution` parameter. If F11 does nothing, try the original game during actual gameplay and inspect the `Check GTA version` output rather than automatically forcing unsupported settings. References: [DOS game controls](https://gta.fandom.com/wiki/Controls_for_GTA_%281997_game%29), [GTA DOS executable variants](https://www.abandonware-france.org/ltf_abandon/ltf_jeu.php?id=803), and [GTA settings file format](https://misc.daniel-marschall.de/spiele/gta1/savegame.html).
+
 ## Windows desktop player and display modes
 
 The default screen now shows the game first. There is **no promotional hero, ticker, side advertisement, or permanently open setup panel**. The `Game setup & advanced tools` drawer stays collapsed unless you need to import a personal file, edit DOS launch commands, or save/update your private one-click shortcut. No Rockstar game data is hosted by this site.
@@ -25,7 +33,7 @@ Desktop graphics diagnostics (added in the next quality pass):
 - **Shape — CRT 4:3 / Raw pixels**: switch between js-dos's 4:3 CRT-corrected presentation and native uncorrected source-pixel aspect. DOS 320×200 VGA output can have non-square pixels; 4:3 remains the recommended default. The comparison changes only presentation, not the game video mode.
 - **Browser graphics renderer** under advanced settings: **WebGL** (default) or **Canvas** (fallback). Choose before launching. The renderer cannot be changed once an emulator session is running; end and relaunch to compare. This is intended for compatibility testing, not a guaranteed speed/quality improvement.
 - **Save screenshot**: export an unmodified native-frame PNG via the js-dos Command Interface. The file is generated locally and is not uploaded to the public repository or a backend. Share it in chat when diagnosing a visual issue. A screenshot size such as 640×480 describes the emulator's output; it is not proof of 1080p native game rendering.
-- **GTA display menu (F11)** opens the original DOS game's screen-display options, rather than forcing a modern display mode. Certain choices can fail depending on the edition or emulation. Keep a backup before experimenting. <https://www.gamesdatabase.org/Media/SYSTEM/Microsoft_DOS/manual/Formated/Grand_Theft_Auto.pdf>
+- **Screen mode (F11)** sends the original GTA DOS screen-mode key during gameplay; the exact behavior is edition-dependent, and the version can be checked with the new running-program diagnostic. Certain choices can fail depending on the edition or emulation. Keep a backup before experimenting. <https://www.gamesdatabase.org/Media/SYSTEM/Microsoft_DOS/manual/Formated/Grand_Theft_Auto.pdf>
 
 Desktop controls:
 - **+ Add File** opens the local file picker. After the file structure and js-dos frontend load successfully, **Play GTA** becomes active. If you have a private saved shortcut, it can become ready without selecting another file.
