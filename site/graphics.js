@@ -1,15 +1,15 @@
 /**
- * Phase 1 graphics presets.
+ * Built-in graphics presets, Phase 1 colour effects and Phase 2 Scale2x.
  * All visual effects are bundled with the public website, and operate purely
  * on the already-rendered game picture. No remote mods or game assets.
  *
- * Phase 1 does NOT implement xBR, Scale2x, texture replacement, native high
- * resolution, or a new emulator renderer. Those need separate validated work.
+ * Phase 2 provides Scale2x for supported low-resolution frames. It does NOT
+ * replace GTA game assets or raise the internal DOS video resolution.
  */
 export const GRAPHICS_PRESETS = Object.freeze({
   original: { label: 'Original', description: 'Unmodified colours with sharp pixel scaling.' },
-  enhanced: { label: 'Enhanced Pixels', description: 'Sharp pixels with restrained colour and contrast correction.' },
-  vibrant: { label: 'Vibrant Classic', description: 'Richer colours and stronger contrast, still pixel-sharp.' },
+  enhanced: { label: 'Enhanced Pixels', description: 'True 2x edge-aware pixel scaling on supported low-resolution game frames.' },
+  vibrant: { label: 'Vibrant Classic', description: 'Scale2x pixel enhancement with richer colours and contrast.' },
   crt: { label: 'CRT Classic', description: 'Subtle scanlines and a classic-monitor colour treatment.' }
 });
 

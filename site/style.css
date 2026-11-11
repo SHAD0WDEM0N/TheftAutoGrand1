@@ -320,3 +320,54 @@ textarea { background: #0c1113; color: var(--text); border: 1px solid var(--stro
   /* Static filters only; no CRT animation or per-frame JS work. */
   .game-window.is-playing #stage-frame[data-graphics="crt"]::after { animation: none; }
 }
+
+
+/* Phase 2: built-in Scale2x presentation layer over the original DOS renderer.
+   This canvas receives only processed output frames and never intercepts input. */
+#enhanced-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  image-rendering: pixelated;
+  object-fit: fill;
+}
+#stage-frame[data-graphics="enhanced"] #enhanced-canvas {
+  filter: contrast(1.06) saturate(1.10);
+}
+#stage-frame[data-graphics="vibrant"] #enhanced-canvas {
+  filter: contrast(1.12) saturate(1.28);
+}
+#stage-frame:fullscreen #enhanced-canvas {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(100vw, 133.333dvh);
+  height: auto;
+  aspect-ratio: 4 / 3;
+}
+.startup-graphics-label {
+  display: block;
+  text-align: left;
+  margin: 9px 0 5px;
+  color: var(--accent-gold);
+  font-size: 12px;
+  font-weight: 700;
+}
+.startup-graphics-select {
+  display: block;
+  width: 100%;
+  padding: 10px 11px;
+  min-height: 39px;
+  border: 1px solid #46837d;
+  border-radius: 4px;
+  background: #162c31;
+  color: var(--text);
+  font-size: 12px;
+}
+.boot-actions .boot-show-dos:disabled {
+  opacity: .48;
+}

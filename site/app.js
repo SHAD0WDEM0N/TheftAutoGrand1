@@ -3,12 +3,52 @@ import { loadPrivateShortcut, savePrivateShortcut, clearPrivateShortcut } from '
 import { inspectBundleEditions, bundleWithGameMode } from './editions.js';
 import { isGtaProgram, shouldMaskDosStartup, looksLikeGameFrame } from './boot.js';
 import { applyGraphicsPreset, GRAPHICS_STORAGE_KEY, normalizeGraphicsPreset, GRAPHICS_PRESETS } from './graphics.js';
+import { canScale2x, needsEnhancedScale2x, scale2xFrame, SCALE2X_FRAME_INTERVAL_MS } from './scale2x.js';
 const $ = (id) => document.getElementById(id);
 const CDN = 'https://cdn.jsdelivr.net/npm/js-dos@8.5.3/dist/';
 let player = null, ci = null, bundleUrl = null, busy = false, active = false, paused = false, timer;
 let libraryPromise, bundleToolsPromise, savedShortcut = null;
 let bootSplashTimer = null, bootPollTimer = null, bootSplashActive = false, bootSplashGeneration = 0;
-let bootLastFrameCheck = 0, bootGraphicFrames = 0;
+let bootLastFrameCheck = 0, bootGraphicFrames = 0, bootStartedAt = 0;
+let scaleImage = null, scaleWidth = 0, scaleHeight = 0, scaleLastPaint = 0, scaleDisabled = false;
+function clearScale2x() {
+  scaleImage = null; scaleWidth = 0; scaleHeight = 0;
+  scaleLastPaint = 0; scaleDisabled = false;
+  $('enhanced-canvas').hidden = true;
+}
+function processEnhancedFrame(rgb, rgba) {
+  const canvas = $('enhanced-canvas');
+  if (!active || !ci || !needsEnhancedScale2x($('graphics-preset').value) || scaleDisabled) {
+    canvas.hidden = true;
+    return;
+  }
+  if (!rgb && !rgba) return; // js-dos may emit empty frames during mode transitions.
+  const w = ci.width(), h = ci.height();
+  if (!canScale2x(w, h)) {
+    canvas.hidden = true;
+    return; // Native F11 high-resolution modes are already pixel-sharp.
+  }
+  const now = performance.now();
+  if (now - scaleLastPaint < SCALE2X_FRAME_INTERVAL_MS) return;
+  scaleLastPaint = now;
+  try {
+    if (!scaleImage || w !== scaleWidth || h !== scaleHeight) {
+      canvas.width = w * 2; canvas.height = h * 2;
+      const context = canvas.getContext('2d', { alpha: false });
+      if (!context) throw new Error('2D canvas is unavailable.');
+      scaleWidth = w; scaleHeight = h;
+      scaleImage = context.createImageData(w * 2, h * 2);
+    }
+    scale2xFrame(rgb, rgba, w, h, scaleImage.data);
+    canvas.getContext('2d', { alpha: false }).putImageData(scaleImage, 0, 0);
+    canvas.hidden = false;
+  } catch (error) {
+    scaleDisabled = true;
+    canvas.hidden = true;
+    status('Enhanced upscaling unavailable: ' + error.message + '. Original sharp rendering remains active.', 'GRAPHICS FALLBACK');
+  }
+}
+
 let selectedSource = null, savedSourceReady = false, fileWasChosen = false;
 let savedEditionInfo = null;
 function updateEditionOptions(source) {
@@ -47,6 +87,8 @@ const idle = $('player').innerHTML;
 function setGraphicsMode(value, save = true) {
   const preset = applyGraphicsPreset($('stage-frame'), value);
   $('graphics-preset').value = preset;
+  $('graphics-startup').value = preset;
+  $('enhanced-canvas').hidden = !needsEnhancedScale2x(preset) || !scaleImage || !active;
   if (save) {
     try { localStorage.setItem(GRAPHICS_STORAGE_KEY, preset); }
     catch { /* Graphics work without browser storage. */ }
@@ -114,15 +156,19 @@ function hideBootSplash() {
   ++bootSplashGeneration;
   bootGraphicFrames = 0;
   bootLastFrameCheck = 0;
+  bootStartedAt = 0;
   clearTimeout(bootSplashTimer);
   clearTimeout(bootPollTimer);
   bootSplashActive = false;
   $('boot-splash').hidden = true;
+  $('skip-video-probe').disabled = true;
 }
 
 function showBootSplash() {
   hideBootSplash();
   bootSplashActive = true;
+  bootStartedAt = Date.now();
+  $('skip-video-probe').disabled = !ci;
   $('boot-message').textContent = 'The game is loading behind the scenes. DOS startup stays hidden.';
   $('boot-splash').hidden = false;
   const generation = bootSplashGeneration;
@@ -152,7 +198,7 @@ function watchGtaFrames(commandInterface) {
     } else {
       bootGraphicFrames = 0;
     }
-    if (bootGraphicFrames >= 2) {
+    if (bootGraphicFrames >= 6 && Date.now() - bootStartedAt >= 2200) {
       hideBootSplash();
       status('Game graphics detected. DOS startup was kept hidden.', 'GAME VISIBLE');
     }
@@ -168,14 +214,10 @@ function watchGtaStartup() {
       const program = await ci.getRunningProgram();
       if (!bootSplashActive || generation !== bootSplashGeneration) return;
       if (isGtaProgram(program)) {
-        $('boot-message').textContent = 'GTA is running. Opening the game…';
-        // Give the DOS game a moment to draw its title/menu, instead of revealing the DOS prompt.
-        bootPollTimer = setTimeout(() => {
-          if (bootSplashActive && generation === bootSplashGeneration) {
-            hideBootSplash();
-            status('GTA is running. The DOS startup screen was hidden; keyboard controls are ready.', 'GTA RUNNING');
-          }
-        }, 1000);
+        // The executable can run while SciTech is still displaying a DOS prompt.
+        // Do not reveal DOS based on program detection: wait for graphical frames,
+        // or let the user choose Show game / Show DOS.
+        $('boot-message').textContent = 'GTA executable detected. Checking the game screen…';
         return;
       }
     } catch {
@@ -218,6 +260,7 @@ function bundleTools() {
 }
 async function end() {
   hideBootSplash();
+  clearScale2x();
   clearTimeout(timer);
   releaseHeldKeys();
   if (document.fullscreenElement === $('stage-frame')) {
@@ -261,6 +304,7 @@ async function launch(demo = false) {
         source.initFs = [{ path: 'disc.iso', contents: new Uint8Array(await file.arrayBuffer()) }];
       }
     }
+    clearScale2x();
     $('player').replaceChildren(); active = true; controls();
     if (!demo && shouldMaskDosStartup(kind, sourceInfo?.editions?.boot, $('gta-edition').value)) {
       showBootSplash();
@@ -277,6 +321,8 @@ async function launch(demo = false) {
       onEvent(event, value) {
         if (event === 'ci-ready') {
           ci = value; clearTimeout(timer); controls();
+          $('skip-video-probe').disabled = !bootSplashActive;
+          ci.events().onFrame((rgb, rgba) => processEnhancedFrame(rgb, rgba));
           if (bootSplashActive) { watchGtaFrames(ci); watchGtaStartup(); }
           ci.events().onFrameSize((width, height) => { if (width > 0 && height > 0) $('video-mode').textContent = 'Native: ' + width + '×' + height; });
           status(bootSplashActive
@@ -351,15 +397,27 @@ $('game').addEventListener('change', () => {
   if (file) void checkAddedFile(file);
 });
 $('add-file').addEventListener('click', () => $('game').click());
-$('graphics-preset').addEventListener('change', () => {
-  const mode = setGraphicsMode($('graphics-preset').value);
+function handleGraphicsChange(value) {
+  const mode = setGraphicsMode(value);
   status(GRAPHICS_PRESETS[mode].description + ' Original GTA assets are unchanged.', 'GRAPHICS: ' + GRAPHICS_PRESETS[mode].label.toUpperCase());
-});
+}
+$('graphics-preset').addEventListener('change', () => handleGraphicsChange($('graphics-preset').value));
+$('graphics-startup').addEventListener('change', () => handleGraphicsChange($('graphics-startup').value));
 $('play').addEventListener('click', () => launch());
 $('demo').addEventListener('click', () => launch(true));
 $('show-dos').addEventListener('click', () => {
   hideBootSplash();
   status('DOS view revealed for troubleshooting. The game keeps running in the background.', 'DOS VISIBLE');
+});
+$('skip-video-probe').addEventListener('click', () => {
+  if (!ci || !bootSplashActive) return;
+  try {
+    ci.simulateKeyPress(256); // Escape, only via explicit user action.
+    $('boot-message').textContent = 'Esc sent. Checking whether GTA proceeds to its title screen…';
+    status('Sent Esc to skip the DOS video-mode test at your request. If needed, use Show game or Show DOS.', 'VIDEO TEST SKIPPED');
+  } catch (error) {
+    status('Could not skip the video-mode test: ' + error.message, 'INPUT NOTICE');
+  }
 });
 $('show-game').addEventListener('click', () => {
   hideBootSplash();
