@@ -76,6 +76,16 @@ test('changing London edition reconstructs the executable selector before Play',
   assert.match(app, /game === 'london69'/);
   assert.match(app, /game === 'london61'/);
   assert.match(app, /updateEditionOptions\(chosenGameSource\(\)\)/);
-  assert.match(html, /app\.js\?v=london-modes-20261111b/);
-  assert.match(html, /style\.css\?v=london-modes-20261111b/);
+  assert.match(html, /app\.js\?v=london-labels-20261111c/);
+  assert.match(html, /style\.css\?v=london-labels-20261111c/);
+});
+
+
+test('graphics edition names omit tested and experimental suffixes', () => {
+  assert.match(app, /'8-bit · GTA8_UK\.EXE'/);
+  assert.match(app, /'24-bit · GTA24_UK\.EXE'/);
+  assert.match(app, /'24-bit · GTA24_61\.EXE'/);
+  assert.ok(!app.includes('GTA8_UK.EXE (tested)'));
+  assert.ok(!app.includes('GTA24_UK.EXE (experimental)'));
+  assert.ok(!app.includes('GTA24_61.EXE (experimental)'));
 });
