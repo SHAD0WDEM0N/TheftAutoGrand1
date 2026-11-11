@@ -62,3 +62,14 @@ test('preflight rejects mismatched files and commands, not merely valid ZIP exte
   const fake=zipBundle(london69);fake.name='fake.zip';
   await assert.rejects(verifyEditionBundle(fake,'london69',{config:conf69}),/converted London .jsdos/);
 });
+
+
+test('filesystem backups with direct London graphics executables remain importable', async () => {
+  const files69 = zipBundle(london69); files69.name='London-1969-backup.jsdos';
+  const direct69 = '[autoexec]\nmount c .\nc:\ncd gtados\ngta24_uk.exe -nounivbe\ncd ..\n';
+  assert.equal((await verifyEditionBundle(files69,'london69',{config:direct69})).edition,'london69');
+  const files61 = zipBundle(london61); files61.name='London-1961-backup.jsdos';
+  const direct61 = '[autoexec]\nmount c .\nc:\ncd gtados\ngta24_61.exe -nounivbe\ncd ..\n';
+  assert.equal((await verifyEditionBundle(files61,'london61',{config:direct61})).edition,'london61');
+  await assert.rejects(verifyEditionBundle(files61,'london61',{config:direct69}),/does not launch london61.bat/);
+});
