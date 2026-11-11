@@ -338,7 +338,7 @@ $('show-dos').addEventListener('click', () => {
 });
 $('show-game').addEventListener('click', () => {
   hideBootSplash();
-  status('Game screen revealed manually. If it is still at a DOS prompt, use the game's startup commands to investigate.', 'GAME DISPLAY');
+  status('Game screen revealed manually. If it is still at a DOS prompt, use the DOS startup commands to investigate.', 'GAME DISPLAY');
 });
 $('install-local').addEventListener('click', async () => {
   const source = selectedSource;
