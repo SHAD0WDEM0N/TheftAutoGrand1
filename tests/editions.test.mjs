@@ -220,7 +220,7 @@ test('quiet boot patches DOSBox aspect in temporary GTA and London bundles witho
   const gta = makeBundle(['GTADOS/GTA8.EXE','GTADOS/GTA24.EXE'], conf);
   const gtaMeta = await inspectBundleEditions(gta);
   const patched = await bundleWithGameMode(gta, gtaMeta, 'auto', {quiet: true});
-  assert.match((await inspectBundleEditions(patched)).config, /\[render\]\nframeskip=0\naspect=true/);
+  assert.match((await inspectBundleEditions(patched)).config, /\[render\]\nframeskip=0\naspect=false/);
   assert.equal((await inspectBundleEditions(gta)).config, conf);
   const londonConf = '[render]\nframeskip=0\n[autoexec]\nmount c .\nc:\ncall london.bat\n';
   const london = makeBundle(['GTADOS/GTA8_UK.EXE','GTADOS/GTA24_UK.EXE','london.bat'], londonConf);
@@ -230,4 +230,16 @@ test('quiet boot patches DOSBox aspect in temporary GTA and London bundles witho
   assert.match(output, /\[render\]\naspect=true\nframeskip=0/);
   assert.match(output, /gta24_uk\.exe -nounivbe/);
   assert.match((await inspectBundleEditions(london)).config,/call london\.bat/);
+});
+
+
+test('base GTA does not receive redundant DOSBox pixel scaling on top of js-dos 4:3', async () => {
+  const conf = '[render]\naspect=true\n[autoexec]\ncd GTADOS\nGTA8.EXE\n';
+  const input = makeBundle(['GTADOS/GTA8.EXE','GTADOS/GTA24.EXE'], conf);
+  const info = await inspectBundleEditions(input);
+  const output = await bundleWithGameMode(input, info, 'auto', {quiet:true,game:'gta'});
+  assert.match((await inspectBundleEditions(output)).config, /\[render\]\naspect=false/);
+  assert.equal((await inspectBundleEditions(input)).config, conf);
+  assert.equal(patchDosPixelAspect(conf,false), patchDosPixelAspect(patchDosPixelAspect(conf,false),false));
+  assert.match(patchDosPixelAspect('[autoexec]\nGTA8.EXE\n', false), /\[render\]\naspect=false/);
 });
