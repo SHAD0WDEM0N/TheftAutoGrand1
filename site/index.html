@@ -58,17 +58,18 @@
               <option value="london61" disabled>London 1961 — add bundle below</option>
             </select>
             <button id="play" type="button" class="play-button" disabled>▶ Play GTA</button>
-            <label for="add-file" class="startup-graphics-label">Add game files</label>
-            <select id="add-file" class="startup-graphics-select edition-upload-select" aria-label="Choose which GTA game file to add">
-              <option value="">+ Add game file…</option>
-              <option value="gta">Add GTA Data File</option>
-              <option value="london69">Add Mission Pack 1 Data File — London 1969</option>
-              <option value="london61">Add Mission Pack 2 Data File — London 1961</option>
-            </select>
+            <details id="add-file-menu" class="add-file-menu">
+              <summary id="add-file" class="load-button">+ Add game files <span aria-hidden="true">▾</span></summary>
+              <div class="add-file-choices" role="group" aria-label="Choose which GTA game file to add">
+                <button type="button" data-upload-edition="gta">Add GTA Data File</button>
+                <button type="button" data-upload-edition="london69">Add Mission Pack 1 Data File — London 1969</button>
+                <button type="button" data-upload-edition="london61">Add Mission Pack 2 Data File — London 1961</button>
+              </div>
+            </details>
             <div id="edition-file-status" class="edition-file-status" role="status" aria-live="polite">
-              <p id="gta-upload-state">GTA 1997: Not loaded</p>
-              <p id="london69-upload-state">London 1969: Not loaded</p>
-              <p id="london61-upload-state">London 1961: Not loaded</p>
+              <p id="gta-upload-state">GTA 1997: No file selected</p>
+              <p id="london69-upload-state">Mission Pack 1 (1969): No file selected</p>
+              <p id="london61-upload-state">Mission Pack 2 (1961): No file selected</p>
             </div>
             <button id="install-local" type="button" class="local-install" disabled hidden>Remember this game on this PC</button>
             <div id="edition-panel" class="edition-panel" hidden>
