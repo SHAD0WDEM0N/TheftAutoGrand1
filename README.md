@@ -1,3 +1,9 @@
+## Auto-skip legacy DOS video setup during GTA launch
+
+The launcher now offers **Auto-skip DOS video setup** beside Quiet DOS startup (enabled by default, can be disabled before Play). Some GTA DOS bundles show a SciTech/UniVBE VGA text-mode analysis prompt that waits for **Esc**. The existing visual cover does not move past this blocking prompt. During the early boot interval only, the optional helper watches for a stable DOS text-mode framebuffer at 720×400 or 640×400/350 and sends **one Esc** after at least 6.5 seconds. It stops on graphical frames, when the boot cover is dismissed, when an Esc has already been sent, or after 17 seconds. It never runs in original game graphics mode and does not change `.jsdos` assets or startup scripts. The visible **Skip video-mode test (Esc)** button remains for manual use.
+
+**Caution:** The site cannot prove from text-mode dimensions alone that a particular screen is SciTech. An unrelated persistent DOS text screen could also receive Esc. If the boot still hangs, disable automatic skipping and use **Show DOS** to inspect the exact prompt; fixing a bundled setup utility at its source would require examining the private game's scripts and configuration. GTA uses Esc in gameplay, which is why the helper is restricted to startup. No hardcoded action is taken on the game menu.
+
 # Theft Auto Grand · DOS Garage
 
 A minimal, gameplay-first browser launcher for a personally owned **DOS edition of Grand Theft Auto (1997)**. No game, disc image, installer, artwork, or music is distributed here. Select a file on your device; the application reads it into browser memory rather than uploading it.

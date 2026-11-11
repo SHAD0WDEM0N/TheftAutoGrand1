@@ -47,3 +47,18 @@ export function looksLikeGameFrame(rgb, rgba, width, height) {
   }
   return visible >= 65 && chromatic >= 22 && colours.size >= 13;
 }
+
+
+/**
+ * A cautious, one-shot startup escape for legacy DOS VGA text screens.
+ * This does not OCR or identify SciTech by name: text mode alone is only a
+ * proxy, so the user can disable this from the prelaunch screen.
+ * Never send a key during normal 320x200 GTA graphics or in a raw ISO shell.
+ */
+export function shouldAutoSkipVideoProbe({ enabled, elapsedMs, width, height, textModeSamples, graphicFrames, alreadySent }) {
+  if (!enabled || alreadySent || graphicFrames > 0) return false;
+  if (!Number.isFinite(elapsedMs) || elapsedMs < 6500 || elapsedMs > 17000) return false;
+  if (textModeSamples < 3) return false;
+  return (width === 720 && height === 400)
+    || (width === 640 && (height === 400 || height === 350));
+}

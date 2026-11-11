@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isGtaProgram, shouldMaskDosStartup, looksLikeGameFrame } from '../site/boot.js';
+import { isGtaProgram, shouldMaskDosStartup, looksLikeGameFrame, shouldAutoSkipVideoProbe } from '../site/boot.js';
 import { readFileSync } from 'node:fs';
 
 const html = readFileSync(new URL('../site/index.html', import.meta.url), 'utf8');
@@ -30,7 +30,7 @@ test('startup splash stays hidden by default and remains manually dismissible', 
   assert.match(html, /id="boot-splash"[^>]*hidden/);
   assert.match(html, /id="show-dos"/);
   assert.match(css, /\.boot-splash\s*\{/);
-  assert.match(app, /watchGtaFrames\(ci\); watchGtaScreenshots\(ci\); watchGtaStartup\(\)/);
+  assert.match(app, /watchGtaFrames\(ci\); watchGtaScreenshots\(ci\); watchGtaStartup\(\); watchVideoSetupPrompt\(ci\)/);
   assert.match(app, /await ci\.getRunningProgram\(\)/);
   assert.match(app, /isGtaProgram\(program\)/);
   assert.match(app, /bootSplashTimer = setTimeout\(/);
@@ -98,4 +98,29 @@ test('quiet startup checkbox affects only the jsdos temporary boot config', () =
   assert.match(html, /id="quiet-startup" type="checkbox" checked/);
   assert.match(app, /bundleWithGameMode\(file, edition, chosenMode, \{ quiet \}\)/);
   assert.match(app, /\$\('quiet-startup'\)\.checked/);
+});
+
+
+test('auto-skip requires opted-in persistent DOS VGA text screen after a startup delay', () => {
+  const base = {enabled:true, elapsedMs:7000, width:720, height:400, textModeSamples:4, graphicFrames:0, alreadySent:false};
+  assert.equal(shouldAutoSkipVideoProbe(base), true);
+  assert.equal(shouldAutoSkipVideoProbe({...base, width:640, height:400}), true);
+  assert.equal(shouldAutoSkipVideoProbe({...base, enabled:false}), false);
+  assert.equal(shouldAutoSkipVideoProbe({...base, elapsedMs:2000}), false);
+  assert.equal(shouldAutoSkipVideoProbe({...base, elapsedMs:18000}), false);
+  assert.equal(shouldAutoSkipVideoProbe({...base, width:320, height:200}), false);
+  assert.equal(shouldAutoSkipVideoProbe({...base, textModeSamples:2}), false);
+  assert.equal(shouldAutoSkipVideoProbe({...base, graphicFrames:1}), false);
+  assert.equal(shouldAutoSkipVideoProbe({...base, alreadySent:true}), false);
+});
+
+test('auto-skip is a one-time startup option and stops with boot overlay', () => {
+  assert.match(html, /id="auto-video-skip" type="checkbox" checked/);
+  assert.match(app, /function watchVideoSetupPrompt\(commandInterface\)/);
+  assert.match(app, /shouldAutoSkipVideoProbe\(\{/);
+  assert.match(app, /bootVideoSkipSent = true/);
+  assert.match(app, /clearTimeout\(bootVideoSkipTimer\)/);
+  assert.match(app, /commandInterface\.simulateKeyPress\(256\)/);
+  assert.match(app, /watchVideoSetupPrompt\(ci\)/);
+  assert.match(app, /\$\('auto-video-skip'\)\.disabled = busy \|\| active \|\| checkingSource/);
 });

@@ -1,7 +1,7 @@
 import { inspectGameFile, inspectJsdos, configuration, quickStartConfig, mobileBundleRisk } from './core.js';
 import { loadPrivateShortcut, savePrivateShortcut, clearPrivateShortcut } from './storage.js';
 import { inspectBundleEditions, bundleWithGameMode } from './editions.js';
-import { isGtaProgram, shouldMaskDosStartup, looksLikeGameFrame } from './boot.js';
+import { isGtaProgram, shouldMaskDosStartup, looksLikeGameFrame, shouldAutoSkipVideoProbe } from './boot.js';
 import { applyGraphicsPreset, GRAPHICS_STORAGE_KEY, normalizeGraphicsPreset, GRAPHICS_PRESETS } from './graphics.js';
 import { canScale2x, needsEnhancedScale2x, scale2xFrame, SCALE2X_FRAME_INTERVAL_MS } from './scale2x.js';
 const $ = (id) => document.getElementById(id);
@@ -11,6 +11,7 @@ let libraryPromise, bundleToolsPromise, savedShortcut = null;
 let bootSplashTimer = null, bootPollTimer = null, bootSplashActive = false, bootSplashGeneration = 0;
 let bootLastFrameCheck = 0, bootGraphicFrames = 0, bootStartedAt = 0;
 let bootScreenshotTimer = null, bootScreenshotMatches = 0, bootGtaDetected = false;
+let bootVideoSkipTimer = null, bootTextModeSamples = 0, bootVideoSkipSent = false;
 let scaleImage = null, scaleWidth = 0, scaleHeight = 0, scaleLastPaint = 0, scaleDisabled = false;
 function clearScale2x() {
   scaleImage = null; scaleWidth = 0; scaleHeight = 0;
@@ -143,6 +144,7 @@ function controls() {
   $('render-backend').disabled = busy || active;
   $('game').disabled = busy || active || checkingSource;
   $('gta-edition').disabled = busy || active || checkingSource;
+  $('auto-video-skip').disabled = busy || active || checkingSource;
   $('quiet-startup').disabled = busy || active || checkingSource;
   $('play').disabled = busy || active || checkingSource || !playableSource()
     || mobileNeedsOverride(playableSource()?.from === 'saved');
@@ -162,6 +164,9 @@ function hideBootSplash() {
   clearTimeout(bootSplashTimer);
   clearTimeout(bootPollTimer);
   clearTimeout(bootScreenshotTimer);
+  clearTimeout(bootVideoSkipTimer);
+  bootTextModeSamples = 0;
+  bootVideoSkipSent = false;
   bootScreenshotMatches = 0;
   bootGtaDetected = false;
   bootSplashActive = false;
@@ -192,6 +197,45 @@ function showBootSplash() {
   }, 18000);
 }
 
+
+function watchVideoSetupPrompt(commandInterface) {
+  if (!bootSplashActive || !$('auto-video-skip').checked) return;
+  const generation = bootSplashGeneration;
+  // Start only after the emulator is ready; the timer is intentionally
+  // conservative so it cannot interrupt the initial driver loading steps.
+  const began = Date.now();
+  const check = () => {
+    if (!bootSplashActive || generation !== bootSplashGeneration || !ci || bootVideoSkipSent) return;
+    let width = 0, height = 0;
+    try {
+      width = commandInterface.width();
+      height = commandInterface.height();
+    } catch { /* A video transition may momentarily lack dimensions. */ }
+    const textMode = (width === 720 && height === 400)
+      || (width === 640 && (height === 400 || height === 350));
+    bootTextModeSamples = textMode ? bootTextModeSamples + 1 : 0;
+    const elapsedMs = Date.now() - began;
+    if (shouldAutoSkipVideoProbe({
+      enabled: $('auto-video-skip').checked,
+      elapsedMs, width, height, textModeSamples: bootTextModeSamples,
+      graphicFrames: bootGraphicFrames, alreadySent: bootVideoSkipSent
+    })) {
+      // Only a single Esc is ever sent per launch. This is not guaranteed
+      // to be a SciTech screen; disable auto-skip if it misidentifies a prompt.
+      bootVideoSkipSent = true;
+      try {
+        commandInterface.simulateKeyPress(256);
+        $('boot-message').textContent = 'Skipped the DOS video setup prompt; checking for GTA…';
+        status('Sent one Esc to the persistent DOS text screen. Waiting for GTA graphics.', 'VIDEO SETUP SKIPPED');
+      } catch (error) {
+        status('Automatic video setup skip failed: ' + error.message, 'INPUT NOTICE');
+      }
+      return;
+    }
+    if (elapsedMs < 17500) bootVideoSkipTimer = setTimeout(check, 700);
+  };
+  bootVideoSkipTimer = setTimeout(check, 800);
+}
 
 function watchGtaScreenshots(commandInterface) {
   if (!bootSplashActive) return;
@@ -367,7 +411,7 @@ async function launch(demo = false) {
           ci = value; clearTimeout(timer); controls();
           $('skip-video-probe').disabled = !bootSplashActive;
           ci.events().onFrame((rgb, rgba) => processEnhancedFrame(rgb, rgba));
-          if (bootSplashActive) { watchGtaFrames(ci); watchGtaScreenshots(ci); watchGtaStartup(); }
+          if (bootSplashActive) { watchGtaFrames(ci); watchGtaScreenshots(ci); watchGtaStartup(); watchVideoSetupPrompt(ci); }
           ci.events().onFrameSize((width, height) => { if (width > 0 && height > 0) $('video-mode').textContent = 'Native: ' + width + '×' + height; });
           status(bootSplashActive
             ? 'Launching GTA in the background…'
@@ -456,6 +500,8 @@ $('show-dos').addEventListener('click', () => {
 $('skip-video-probe').addEventListener('click', () => {
   if (!ci || !bootSplashActive) return;
   try {
+    bootVideoSkipSent = true; // Prevent the automatic aid from sending a second Esc.
+    clearTimeout(bootVideoSkipTimer);
     ci.simulateKeyPress(256); // Escape, only via explicit user action.
     $('boot-message').textContent = 'Esc sent. Checking whether GTA proceeds to its title screen…';
     status('Sent Esc to skip the DOS video-mode test at your request. If needed, use Show game or Show DOS.', 'VIDEO TEST SKIPPED');
