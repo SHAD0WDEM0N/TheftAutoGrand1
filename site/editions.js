@@ -99,7 +99,9 @@ export function patchQuietBoot(conf) {
   const hasCls = firstCommands.some(line => /^@?cls$/i.test(line));
   const additions = [!hasEcho ? '@echo off' : null, !hasCls ? 'cls' : null].filter(Boolean);
   if (!additions.length) return conf;
-  return autoexec.before + newline + additions.join(newline) + autoexec.commands + autoexec.after;
+  const before = autoexec.before.endsWith('\n') ? autoexec.before : autoexec.before + newline;
+  const separator = /^\r?\n/.test(autoexec.commands) ? '' : newline;
+  return before + additions.join(newline) + separator + autoexec.commands + autoexec.after;
 }
 
 // The patched archive is assembled using Blob slices: the original 750+ MB bundle
