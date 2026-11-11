@@ -53,7 +53,7 @@ test('boot readiness uses screenshots and guarded 18-second GTA-executable fallb
 });
 
 test('unknown private jsdos launchers stay masked; raw installer ISOs remain visible', () => {
-  assert.match(app, /shouldMaskDosStartup\(kind, sourceInfo\?\.editions\?\.boot, \$\('gta-edition'\)\.value\)/);
+  assert.match(app, /shouldMaskDosStartup\(kind, sourceInfo\?\.editions\?\.boot, \$\('game-edition'\)\.value === 'gta'/);
   assert.match(app, /Installer ISOs need a visible shell/);
 });
 
