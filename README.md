@@ -1,3 +1,11 @@
+## London graphics edition selection
+
+The **Graphics edition** control is now scoped to the currently selected game. GTA 1997 still uses the original `GTA8.EXE` / `GTA24.EXE` modes (when verified); London 1969 uses `GTA8_UK.EXE` and `GTA24_UK.EXE`; London 1961 currently exposes `GTA24_61.EXE` only. Each available mode is checked against the private bundle's ZIP directory. You can switch the game edition and independently select a DOS executable for that game. Choices apply to the **next launch**; they do not hot-swap a running DOS process.
+
+The **Default (bundled London launcher)** option preserves the exact working CleanBoot V3 launch route, especially the user-tested London 1969 8-bit startup. Choosing an explicit London graphics mode makes a temporary in-memory replacement of the DOSBox `[autoexec]` batch call, launching the chosen exe from `GTADOS` with `-nounivbe` for 24-bit modes. No game files or original batches are overwritten. 24-bit London modes need real-world browser testing and can have driver/mode compatibility problems.
+
+**Screen mode (F11)** is not a renderer setting and cannot enable an unsupported internal DOS video mode. It is disabled for the London 1969 8-bit/default variant confirmed to lack usable F11 switching; in other modes it requests F11 but makes no guarantee that the executable will change resolutions. Website graphics presets (Original/Scale2x/Smart HD/Vibrant/CRT) continue to operate as separate presentation-only effects. 3dfx modes are not advertised without a tested Glide-capable backend.
+
 ## Upload menu and readiness fix
 
 The **Add game files** control is a real click-to-open HTML disclosure menu, not a native select requiring the user to hold or drag the mouse. Click once to open, then click **Add GTA Data File**, **Add Mission Pack 1 Data File**, or **Add Mission Pack 2 Data File** to open that file picker.
