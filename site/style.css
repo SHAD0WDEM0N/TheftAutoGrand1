@@ -565,3 +565,62 @@ textarea { background: #0c1113; color: var(--text); border: 1px solid var(--stro
   line-height: 1.4;
 }
 .edition-file-status p:first-child { color: #d7f1e6; }
+
+
+/* Click-to-open upload menu. Not a native <select>: no hold-and-release required. */
+.add-file-menu {
+  width: 100%;
+  margin-top: 10px;
+  position: relative;
+  text-align: left;
+}
+.add-file-menu > summary {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 5px;
+  border: 1px solid #5a8e80;
+  cursor: pointer;
+  user-select: none;
+  background: #1b3032;
+  color: var(--text);
+  font-weight: 700;
+}
+.add-file-menu > summary::-webkit-details-marker { display: none; }
+.add-file-menu[open] > summary { border-color: var(--accent-teal); }
+.add-file-menu.is-disabled > summary { opacity: .45; pointer-events: none; }
+.add-file-choices {
+  position: absolute;
+  z-index: 15;
+  width: 100%;
+  bottom: calc(100% + 5px);
+  padding: 6px;
+  border: 1px solid #4e8f84;
+  border-radius: 5px;
+  background: #19292d;
+  box-shadow: 0 9px 25px #000c;
+  max-height: min(46dvh, 230px);
+  overflow-y: auto;
+}
+.start-menu .add-file-choices button {
+  margin: 0;
+  padding: 11px 12px;
+  min-height: 43px;
+  width: 100%;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #e5f2ef;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+}
+.start-menu .add-file-choices button:hover,
+.start-menu .add-file-choices button:focus-visible { background: #31544e; }
+.edition-file-status p[data-state="ready"] { color: #9be3b6; }
+.edition-file-status p[data-state="checking"] { color: var(--accent-gold); }
+.edition-file-status p[data-state="error"] { color: #ffaba5; }
