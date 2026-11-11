@@ -37,7 +37,9 @@ a { color: var(--highlight); }
 .app { min-height: calc(100dvh - 54px); padding: 12px 14px 24px; }
 .game-window { display: flex; justify-content: center; align-items: flex-start; }
 .stage-frame {
-  width: min(100%, 106dvh, 1700px);
+  /* Always present the DOS image in an 800×600 (4:3) viewport on desktop.
+     Narrow screens scale the whole picture down without changing its ratio. */
+  width: min(100%, 800px);
   min-width: 0;
   aspect-ratio: 4 / 3;
   position: relative;
@@ -676,3 +678,26 @@ textarea { background: #0c1113; color: var(--text); border: 1px solid var(--stro
   overflow-wrap: anywhere;
 }
 #backup-status { padding-top: 8px; border-top: 1px solid #375057; }
+
+
+/* 800×600 output viewport: enforce 4:3 through emulator canvas transitions. */
+#stage-frame:not(:fullscreen) {
+  width: min(100%, 800px);
+  aspect-ratio: 800 / 600;
+}
+#player > div,
+#player > canvas {
+  max-width: 100%;
+  max-height: 100%;
+}
+/* DOSBox swaps its render canvas when video mode changes. The layout should
+   keep the whole 4:3 viewport, not expand to the native DOS buffer size. */
+#player canvas {
+  display: block;
+  object-fit: fill;
+}
+#stage-frame:fullscreen #player,
+#stage-frame:fullscreen #enhanced-canvas,
+#stage-frame:fullscreen #gpu-canvas {
+  aspect-ratio: 800 / 600;
+}
