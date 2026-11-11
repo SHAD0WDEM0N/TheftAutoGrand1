@@ -227,8 +227,8 @@ function controls() {
   const canInstall = !busy && !active && !checkingSource && selectedSource?.from === 'file' && selectedSource.kind === 'jsdos';
   $('install-local').hidden = !selectedSource || selectedSource.kind !== 'jsdos' || selectedSource.from !== 'file';
   $('install-local').disabled = !canInstall;
-  $('native-resolution').disabled = busy || !ci || (activeGameEdition === 'london69' && activeDosMode === 'gta8');
-  $('native-resolution').title = activeGameEdition === 'london69' && activeDosMode === 'gta8'
+  $('native-resolution').disabled = busy || !ci || (activeGameEdition === 'london69' && (activeDosMode === 'gta8' || activeDosMode === 'auto'));
+  $('native-resolution').title = activeGameEdition === 'london69' && (activeDosMode === 'gta8' || activeDosMode === 'auto')
     ? 'GTA8_UK.EXE uses 8-bit video mode; switch to London 1969 24-bit before launch to test higher resolutions.'
     : 'Request a screen mode from the current game (F11); availability depends on the executable.';
   $('inspect-program').disabled = busy || !ci;
