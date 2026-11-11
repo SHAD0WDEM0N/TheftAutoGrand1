@@ -18,7 +18,7 @@ test('only known direct GTA8/GTA24 bundle starts get a hidden DOS boot', () => {
 });
 
 test('only GTA executable names count as detected game launches', () => {
-  for (const name of ['GTA8', 'GTA8.EXE', 'GTA24', 'GTADOS\\GTA24.EXE', 'C:\\GTA\\GTA8.EXE', 'GTA_UK.EXE', 'GTA_61.EXE']) {
+  for (const name of ['GTA8', 'GTA8.EXE', 'GTA24', 'GTADOS\\GTA24.EXE', 'C:\\GTA\\GTA8.EXE', 'GTA_UK.EXE', 'GTA_61.EXE', 'GTA8_UK.EXE', 'GTADOS\\GTA24_UK.EXE', 'GTA24_61.EXE']) {
     assert.equal(isGtaProgram(name), true, name);
   }
   for (const name of ['', 'COMMAND.COM', 'GTA.BAT', 'GTA18.EXE', 'SETUP.EXE', null, {}]) {
@@ -97,7 +97,7 @@ test('optional install retains a private local copy and never uploads files', ()
 test('quiet startup checkbox affects only the jsdos temporary boot config', () => {
   assert.ok(!html.includes('id="quiet-startup"'));
   assert.match(app, /const quiet = true/);
-  assert.match(app, /bundleWithGameMode\(file, edition, chosenMode, \{ quiet \}\)/);
+  assert.match(app, /bundleWithGameMode\(file, edition, chosenMode, \{ quiet, game: selectedGame \}\)/);
   assert.ok(!app.includes("$('quiet-startup')"));
 });
 

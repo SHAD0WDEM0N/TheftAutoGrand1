@@ -104,17 +104,71 @@ export function patchQuietBoot(conf) {
   return before + additions.join(newline) + separator + autoexec.commands + autoexec.after;
 }
 
+
+/**
+ * London graphics modes are separate from base GTA8/GTA24 modes.
+ * Only expose executable variants actually present in the private archive.
+ * Glide/3dfx is intentionally unavailable without a proven backend.
+ */
+export async function inspectLondonGraphicsModes(file, game, inspection) {
+  if (!['london69', 'london61'].includes(game)) throw new Error('Unsupported London edition.');
+  const zip = await readZipIndex(file);
+  const names = new Set(zip.entries.map(entry => nameOf(entry.name)));
+  const targets = game === 'london69'
+    ? { gta8: 'GTADOS/GTA8_UK.EXE', gta24: 'GTADOS/GTA24_UK.EXE' }
+    : { gta24: 'GTADOS/GTA24_61.EXE' };
+  return {
+    ...inspection,
+    graphicsGame: game,
+    available: ['auto', ...Object.keys(targets).filter(mode => names.has(targets[mode]))],
+    note: game === 'london69'
+      ? 'London 1969 supports separate 8-bit and 24-bit executables.'
+      : 'London 1961 provides a 24-bit DOS executable; there is no GTA8_61.EXE in this bundle.'
+  };
+}
+
+/**
+ * Replace a single "call london.bat" command only inside a temporary
+ * DOSBox config. No game files or original London batch scripts are modified.
+ */
+export function patchLondonAutoexec(conf, game, mode) {
+  if (!['london69', 'london61'].includes(game)) throw new Error('Unsupported London edition.');
+  const modes = game === 'london69'
+    ? { gta8: 'gta8_uk.exe', gta24: 'gta24_uk.exe -nounivbe' }
+    : { gta24: 'gta24_61.exe -nounivbe' };
+  const executable = modes[mode];
+  if (!executable) throw new Error('Unsupported graphics edition for this London game.');
+  const batchName = game === 'london69' ? 'london.bat' : 'london61.bat';
+  const autoexec = dosboxAutoexec(conf);
+  if (!autoexec) throw new Error('Missing DOSBox autoexec section.');
+  const newline = conf.includes('\r\n') ? '\r\n' : '\n';
+  let replacements = 0;
+  const lines = autoexec.commands.split(/\r?\n/);
+  const updated = lines.map(line => {
+    const trimmed = line.trim();
+    if (/^(?:rem\b|::|#)/i.test(trimmed)) return line;
+    const match = /^(?:call\s+)?([a-z0-9_.-]+)(?:\s*)$/i.exec(trimmed);
+    if (!match || match[1].toLowerCase() !== batchName) return line;
+    replacements++;
+    return ['cd gtados', executable, 'cd ..'].join(newline);
+  });
+  if (replacements !== 1) throw new Error('Expected one '+batchName+' in DOSBox startup configuration.');
+  return autoexec.before + updated.join(newline) + autoexec.after;
+}
+
 // The patched archive is assembled using Blob slices: the original 750+ MB bundle
 // is not loaded as one huge ArrayBuffer. The old ZIP central directory remains inert
 // and a new ZIP central directory is appended after a replacement DOSBox config entry.
-export async function bundleWithGameMode(file, inspection, mode, { quiet = false } = {}) {
+export async function bundleWithGameMode(file, inspection, mode, { quiet = false, game = 'gta' } = {}) {
   if (mode === 'auto' && !quiet) return file;
   if (mode !== 'auto' && !inspection?.available?.includes(mode)) throw new Error('This game mode is not available in the selected bundle.');
   if (typeof inspection?.config !== 'string') {
     if (mode === 'auto') return file; // Preserve working unknown archive layout.
     throw new Error('DOSBox startup configuration could not be inspected.');
   }
-  const variantConf = mode === 'auto' ? inspection.config : patchAutoexecGame(inspection.config, mode);
+  const variantConf = mode === 'auto' ? inspection.config
+    : game === 'gta' ? patchAutoexecGame(inspection.config, mode)
+      : patchLondonAutoexec(inspection.config, game, mode);
   const newConf = quiet ? patchQuietBoot(variantConf) : variantConf;
   if (newConf === inspection.config) return file;
   const zip = await readZipIndex(file);

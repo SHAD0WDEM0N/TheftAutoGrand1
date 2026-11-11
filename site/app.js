@@ -1,6 +1,6 @@
 import { inspectGameFile, inspectJsdos, configuration, quickStartConfig, mobileBundleRisk } from './core.js';
 import { loadPrivateShortcut, savePrivateShortcut, clearPrivateShortcut } from './storage.js';
-import { inspectBundleEditions, bundleWithGameMode } from './editions.js';
+import { inspectBundleEditions, inspectLondonGraphicsModes, bundleWithGameMode } from './editions.js';
 import { isGtaProgram, shouldMaskDosStartup, looksLikeGameFrame, shouldAutoSkipVideoProbe } from './boot.js';
 import { applyGraphicsPreset, GRAPHICS_STORAGE_KEY, normalizeGraphicsPreset, GRAPHICS_PRESETS } from './graphics.js';
 import { canScale2x, needsEnhancedScale2x, scale2xFrame, SCALE2X_FRAME_INTERVAL_MS } from './scale2x.js';
@@ -18,6 +18,8 @@ let scaleImage = null, scaleWidth = 0, scaleHeight = 0, scaleLastPaint = 0, scal
 let gpuRenderer = null, gpuLastFrame = 0, gpuUnavailable = false;
 const londonSources = { london69: null, london61: null };
 let londonChecking = false;
+const selectedGraphicsByGame = {gta: 'auto', london69: 'auto', london61: 'auto'};
+let activeGameEdition = 'gta', activeDosMode = 'auto';
 const uploadProgress = { gta: null, london69: null, london61: null };
 function setUploadProgress(edition, progress) {
   uploadProgress[edition] = progress;
@@ -59,6 +61,7 @@ function updateGameEditions() {
     ready69, available69, 'add GTA data to unlock');
   labelState('london61-upload-state', 'Mission Pack 2 (1961)', uploadProgress.london61,
     ready61, available61, 'add GTA and Mission Pack 1 to unlock');
+  updateEditionOptions(chosenGameSource());
 }
 function clearGpu() {
   $('gpu-canvas').hidden = true;
@@ -131,20 +134,28 @@ function updateEditionOptions(source) {
   const panel = $('edition-panel');
   const select = $('gta-edition');
   const note = $('edition-note');
+  const game = $('game-edition').value;
   const editions = source?.editions;
-  select.value = 'auto';
   for (const option of select.options) {
-    if (option.value === 'auto') continue;
-    option.disabled = !editions?.available?.includes(option.value);
+    if (option.value === 'auto') {
+      option.textContent = game === 'gta' ? 'Original (bundle default)' : 'Default (bundled London launcher)';
+    } else if (option.value === 'gta8') {
+      option.textContent = game === 'london69' ? '8-bit · GTA8_UK.EXE (tested)' : 'Standard · GTA8.EXE';
+    } else if (option.value === 'gta24') {
+      option.textContent = game === 'london69' ? '24-bit · GTA24_UK.EXE (test mode)'
+        : game === 'london61' ? '24-bit · GTA24_61.EXE (test mode)' : 'High Colour · GTA24.EXE';
+    }
+    if (option.value !== 'auto') option.disabled = !editions?.available?.includes(option.value);
   }
+  const preferred = selectedGraphicsByGame[game] || 'auto';
+  select.value = editions?.available?.includes(preferred) ? preferred : 'auto';
   panel.hidden = !source || source.kind !== 'jsdos';
-  if (!editions || source?.kind !== 'jsdos') {
-    note.textContent = 'Select a private .jsdos bundle to inspect its game executables.';
-  } else {
-    const found = editions.detected.map(mode => mode === 'gta8' ? 'GTA8.EXE' : 'GTA24.EXE');
-    note.textContent = 'Detected: ' + (found.join(' and ') || 'no directly visible GTA executables') +
-      '. ' + editions.note + ' 3dfx needs a separately tested Glide-ready setup.';
-  }
+  note.textContent = !editions || source?.kind !== 'jsdos'
+    ? 'Load a compatible .jsdos game bundle to choose its DOS graphics executable.'
+    : editions.graphicsGame
+      ? editions.note + ' The 24-bit modes are unverified; if they fail, switch back to the tested 8-bit/default launcher. 3dfx requires a separate Glide-capable setup.'
+      : 'Detected: ' + editions.detected.map(mode => mode === 'gta8' ? 'GTA8.EXE' : 'GTA24.EXE').join(' and ') +
+        '. ' + editions.note + ' 3dfx needs a separately tested Glide-ready setup.';
 }
 let checkingSource = false, checkGeneration = 0;
 function playableSource() {
@@ -216,7 +227,10 @@ function controls() {
   const canInstall = !busy && !active && !checkingSource && selectedSource?.from === 'file' && selectedSource.kind === 'jsdos';
   $('install-local').hidden = !selectedSource || selectedSource.kind !== 'jsdos' || selectedSource.from !== 'file';
   $('install-local').disabled = !canInstall;
-  $('native-resolution').disabled = busy || !ci;
+  $('native-resolution').disabled = busy || !ci || (activeGameEdition === 'london69' && (activeDosMode === 'gta8' || activeDosMode === 'auto'));
+  $('native-resolution').title = activeGameEdition === 'london69' && (activeDosMode === 'gta8' || activeDosMode === 'auto')
+    ? 'GTA8_UK.EXE uses 8-bit video mode; switch to London 1969 24-bit before launch to test higher resolutions.'
+    : 'Request a screen mode from the current game (F11); availability depends on the executable.';
   $('inspect-program').disabled = busy || !ci;
   $('screenshot').disabled = busy || !ci;
   $('render-backend').disabled = busy || active;
@@ -432,6 +446,7 @@ async function end() {
   }
   if (player) await player.stop();
   player = null; ci = null; active = false; paused = false;
+  activeGameEdition = 'gta'; activeDosMode = 'auto';
   if (bundleUrl) URL.revokeObjectURL(bundleUrl);
   bundleUrl = null; $('pause').textContent = 'Pause'; $('player').innerHTML = idle; $('video-mode').textContent = 'Native: —'; $('program-info').textContent = 'Program: —'; isFullscreen = false; $('fullscreen').textContent = 'Fullscreen'; controls();
 }
@@ -449,18 +464,24 @@ async function launch(demo = false) {
     status('Loading emulator code…', 'LOADING'); await loadLibrary();
     const source = {};
     if (kind === 'jsdos') {
-      const chosenMode = $('game-edition').value === 'gta' ? $('gta-edition').value : 'auto';
+      const selectedGame = $('game-edition').value;
+      const chosenMode = $('gta-edition').value;
       const edition = sourceInfo.editions;
       if (chosenMode !== 'auto' && !edition?.available?.includes(chosenMode)) {
         throw new Error('This GTA graphics edition is not verified as available in the selected game bundle.');
       }
       const quiet = true; // Keep the tested working DOS boot path always enabled.
-      const startBundle = await bundleWithGameMode(file, edition, chosenMode, { quiet });
+      const startBundle = await bundleWithGameMode(file, edition, chosenMode, { quiet, game: selectedGame });
+      activeGameEdition = selectedGame;
+      activeDosMode = chosenMode;
       bundleUrl = URL.createObjectURL(startBundle);
       source.url = bundleUrl;
       status((chosenMode === 'auto'
-        ? 'Starting with the original GTA launch commands.'
-        : 'Starting ' + (chosenMode === 'gta24' ? 'high-colour GTA24.EXE' : 'standard GTA8.EXE') + '.') +
+        ? 'Starting with the bundled DOS launch commands.'
+        : 'Starting ' + (selectedGame === 'london69'
+          ? (chosenMode === 'gta24' ? 'London 1969 GTA24_UK.EXE' : 'London 1969 GTA8_UK.EXE')
+          : selectedGame === 'london61' ? 'London 1961 GTA24_61.EXE'
+            : (chosenMode === 'gta24' ? 'GTA24.EXE' : 'GTA8.EXE')) + '.') +
         (quiet && startBundle !== file ? ' Quiet DOS startup enabled.' : ''), 'STARTING');
     }
     else {
@@ -578,8 +599,9 @@ async function checkLondonBundle(edition, file) {
     if (!file.name.toLowerCase().endsWith('.jsdos')) throw new Error('Choose the converted London .jsdos bundle.');
     const inspected = await inspectGameFile(file);
     if (inspected.kind !== 'jsdos') throw new Error('Not a valid .jsdos DOS game bundle.');
-    const editions = await inspectBundleEditions(file);
-    const verification = await verifyEditionBundle(file, edition, editions);
+    const inspectedEditions = await inspectBundleEditions(file);
+    const verification = await verifyEditionBundle(file, edition, inspectedEditions);
+    const editions = await inspectLondonGraphicsModes(file, edition, inspectedEditions);
     londonSources[edition] = { file, kind: 'jsdos', from: 'london', editions, verification };
     setUploadProgress(edition, {state: 'ready', message: 'Verified ' + file.name + ' (' + verification.fileCount + ' entries; gameplay not tested)'});
     $(statusId).textContent = 'Verified ' + file.name + ' (' + verification.fileCount + ' ZIP entries). ' +
@@ -588,6 +610,7 @@ async function checkLondonBundle(edition, file) {
     if (!$('game-edition').querySelector('[value="' + edition + '"]').disabled) {
       $('game-edition').value = edition;
     }
+    updateEditionOptions(chosenGameSource());
     status(label + ' is structurally compatible. Choose Play GTA to test the game.', 'MISSION PACK READY');
   } catch (error) {
     londonSources[edition] = null;
@@ -602,6 +625,11 @@ async function checkLondonBundle(edition, file) {
 for (const [id, edition] of [['london69-file','london69'],['london61-file','london61']]) {
   $(id).addEventListener('change', () => { void checkLondonBundle(edition, $(id).files[0]); });
 }
+$('gta-edition').addEventListener('change', () => {
+  selectedGraphicsByGame[$('game-edition').value] = $('gta-edition').value;
+  const mode = $('gta-edition').selectedOptions[0]?.textContent || $('gta-edition').value;
+  status('Selected DOS executable: ' + mode + '. This takes effect on the next launch.', 'GRAPHICS EDITION');
+});
 $('game-edition').addEventListener('change', () => {
   updateGameEditions();
   updateMobileNotice();
