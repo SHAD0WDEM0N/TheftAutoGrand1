@@ -476,7 +476,7 @@ async function end() {
   player = null; ci = null; active = false; paused = false;
   activeGameEdition = 'gta'; activeDosMode = 'auto';
   if (bundleUrl) URL.revokeObjectURL(bundleUrl);
-  bundleUrl = null; $('pause').textContent = 'Pause'; $('player').innerHTML = idle; $('video-mode').textContent = 'Native: —'; $('program-info').textContent = 'Program: —'; isFullscreen = false; $('fullscreen').textContent = 'Fullscreen'; controls();
+  bundleUrl = null; $('pause').textContent = 'Pause'; $('player').innerHTML = idle; $('video-mode').textContent = 'Emulator frame: —'; $('program-info').textContent = 'Program: —'; isFullscreen = false; $('fullscreen').textContent = 'Fullscreen'; controls();
 }
 async function launch(demo = false) {
   busy = true; controls();
@@ -542,7 +542,7 @@ async function launch(demo = false) {
           ci.events().onFrame((rgb, rgba) => processEnhancedFrame(rgb, rgba));
           ci.events().onFrame((rgb, rgba) => processGpuFrame(rgb, rgba));
           if (bootSplashActive) { watchGtaFrames(ci); watchGtaScreenshots(ci); watchGtaStartup(); watchVideoSetupPrompt(ci); }
-          ci.events().onFrameSize((width, height) => { if (width > 0 && height > 0) $('video-mode').textContent = 'Native: ' + width + '×' + height; });
+          ci.events().onFrameSize((width, height) => { if (width > 0 && height > 0) $('video-mode').textContent = 'Emulator frame: ' + width + '×' + height; });
           status(bootSplashActive
             ? 'Launching GTA in the background…'
             : demo

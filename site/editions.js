@@ -165,13 +165,13 @@ export function patchLondonAutoexec(conf, game, mode) {
  * the private source. Preserve CRLF files, other render settings, and
  * idempotency so restored backups can safely be launched again.
  */
-export function patchDosPixelAspect(conf) {
+export function patchDosPixelAspect(conf, enabled = true) {
   if (typeof conf !== 'string' || !conf.trim()) throw new Error('Missing DOSBox configuration.');
   const newline = conf.includes('\r\n') ? '\r\n' : '\n';
   const header = /^\[render\][ \t]*(?:\r?\n|$)/im.exec(conf);
   if (!header) {
     const join = conf.length && !conf.endsWith('\n') ? newline : '';
-    return conf + join + '[render]' + newline + 'aspect=true' + newline;
+    return conf + join + '[render]' + newline + 'aspect=' + String(enabled) + newline;
   }
   const sectionStart = header.index + header[0].length;
   const following = conf.slice(sectionStart);
@@ -184,9 +184,9 @@ export function patchDosPixelAspect(conf) {
     if (!/^[ \t]*aspect[ \t]*=/i.test(line)) return line;
     if (found) return line;
     found = true;
-    return line.replace(/^([ \t]*aspect[ \t]*=)[^\r\n]*/i, '$1true');
+    return line.replace(/^([ \t]*aspect[ \t]*=)[^\r\n]*/i, '$1' + String(enabled));
   });
-  if (!found) rewritten.unshift('aspect=true');
+  if (!found) rewritten.unshift('aspect=' + String(enabled));
   const result = conf.slice(0, sectionStart) + rewritten.join(newline) + conf.slice(sectionEnd);
   return result;
 }
@@ -206,7 +206,10 @@ export async function bundleWithGameMode(file, inspection, mode, { quiet = false
       : patchLondonAutoexec(inspection.config, game, mode);
   // Apply pixel-aspect correction on every verified private jsdos boot.
   // This happens in the temporary ZIP config, not in the original game files.
-  const newConf = patchDosPixelAspect(quiet ? patchQuietBoot(variantConf) : variantConf);
+  // GTA 1997 is already corrected to 4:3 by the js-dos player; forcing
+  // DOSBox pixel correction on top caused an elongated framebuffer report.
+  // Keep London as-is while its user-confirmed working launch is tested separately.
+  const newConf = patchDosPixelAspect(quiet ? patchQuietBoot(variantConf) : variantConf, game !== 'gta');
   if (newConf === inspection.config) return file;
   const zip = await readZipIndex(file);
   const entry = zip.entries.find(e => nameOf(e.name) === CONFIG_PATH.toUpperCase());
