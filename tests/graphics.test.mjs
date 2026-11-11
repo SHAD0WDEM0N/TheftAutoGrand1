@@ -8,7 +8,7 @@ const css = readFileSync(new URL('../site/style.css', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../site/app.js', import.meta.url), 'utf8');
 
 test('Phase 1 ships all four graphics presets with a safe original default', () => {
-  assert.deepEqual(Object.keys(GRAPHICS_PRESETS), ['original', 'enhanced', 'vibrant', 'crt']);
+  assert.deepEqual(Object.keys(GRAPHICS_PRESETS), ['original', 'smart', 'enhanced', 'vibrant', 'crt']);
   assert.equal(normalizeGraphicsPreset('original'), 'original');
   assert.equal(normalizeGraphicsPreset('vibrant'), 'vibrant');
   assert.equal(normalizeGraphicsPreset('invalid'), 'original');

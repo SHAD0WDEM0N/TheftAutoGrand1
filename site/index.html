@@ -26,6 +26,7 @@
       <div id="stage-frame" class="stage-frame">
         <div id="player"><div class="idle" aria-hidden="true"></div></div>
         <canvas id="enhanced-canvas" aria-hidden="true" hidden></canvas>
+        <canvas id="gpu-canvas" aria-hidden="true" hidden></canvas>
         <div id="boot-splash" class="boot-splash" hidden>
           <div class="boot-content">
             <span class="boot-spinner" aria-hidden="true"></span>
@@ -46,17 +47,16 @@
             <select id="graphics-startup" class="startup-graphics-select" aria-label="Choose graphics effect before starting GTA">
               <option value="original">Original — sharp pixels</option>
               <option value="enhanced">Enhanced HD — Scale2x</option>
+              <option value="smart">Smart HD — GPU edges (Phase 3)</option>
               <option value="vibrant">Enhanced HD + vivid colour</option>
               <option value="crt">CRT Classic</option>
             </select>
-            <label class="quiet-startup-option" for="quiet-startup">
-              <input id="quiet-startup" type="checkbox" checked>
-              <span>Quiet DOS startup <small>Hide command echoes, keep game launch intact</small></span>
-            </label>
-            <label class="quiet-startup-option" for="auto-video-skip">
-              <input id="auto-video-skip" type="checkbox" checked>
-              <span>Auto-skip DOS video setup <small>Send Esc once if a VGA text-mode prompt persists during boot</small></span>
-            </label>
+            <label for="game-edition" class="startup-graphics-label">Game edition</label>
+            <select id="game-edition" class="startup-graphics-select" aria-label="Choose GTA or installed London expansion">
+              <option value="gta">Grand Theft Auto (1997)</option>
+              <option value="london69" disabled>London 1969 — add bundle below</option>
+              <option value="london61" disabled>London 1961 — add bundle below</option>
+            </select>
             <button id="play" type="button" class="play-button" disabled>▶ Play GTA</button>
             <button id="add-file" type="button" class="load-button">+ Add File</button>
             <button id="install-local" type="button" class="local-install" disabled hidden>Remember this game on this PC</button>
@@ -86,6 +86,7 @@
         <select id="graphics-preset" aria-label="Built-in graphics enhancement preset">
           <option value="original">Original</option>
           <option value="enhanced">Enhanced HD · Scale2x</option>
+          <option value="smart">Smart HD · GPU</option>
           <option value="vibrant">Enhanced HD · Vibrant</option>
           <option value="crt">CRT Classic</option>
         </select>
@@ -161,6 +162,16 @@
           <label class="visually-hidden" for="game">Choose your DOS game</label>
           <input id="game" class="visually-hidden" type="file" accept=".iso,.jsdos">
           <p id="file-info" class="filename">No game file selected</p>
+          <div class="london-uploads">
+            <label for="london69-file">London 1969 (.jsdos)</label>
+            <input id="london69-file" type="file" accept=".jsdos">
+            <p id="london69-status" role="status">No London 1969 bundle added.</p>
+            <label for="london61-file">London 1961 (.jsdos)</label>
+            <input id="london61-file" type="file" accept=".jsdos">
+            <p id="london61-status" role="status">Requires GTA and London 1969; no bundle added.</p>
+            <p class="privacy-note">Use locally prepared DOS bundles containing the expansion's required files and startup commands. Raw ISO/installer formats aren't supported for direct expansion launch yet. Nothing is uploaded to the server.</p>
+          </div>
+
           <div id="mobile-warning" class="notice" hidden>
             <strong>Large file warning</strong>
             <p id="mobile-warning-text"></p>
@@ -193,8 +204,8 @@ dir</textarea>
             <option value="canvas">Canvas (compatibility fallback)</option>
           </select>
           <p class="hint">Choose before launching GTA; switching requires ending and restarting the game.</p>
-          <p><strong>Auto-skip DOS video setup</strong> is an optional, one-time boot aid. It only sends Esc when a known DOS text-mode display persists after emulator startup; it does not run during gameplay. You can turn it off before Play if you need to inspect a setup prompt. It cannot identify the exact SciTech utility without the private game's configuration.</p>
-          <p><strong>Boot Cleanup</strong> uses the original GTA .jsdos archive and adds a temporary <code>@echo off</code> / <code>cls</code> startup patch when Quiet DOS startup is enabled. It never edits your Datafile.jsdos and never automatically skips SciTech Display Doctor input prompts. Turn it off to use the exact original configuration, or choose Show DOS while starting.</p>
+          <p><strong>Video setup:</strong> One guarded Esc is automatically sent only if a persistent DOS text-mode screen is detected during startup. The Show DOS option remains available for troubleshooting.</p>
+          <p><strong>Boot Cleanup</strong> always enables quiet DOS commands and the guarded one-time video-setup Esc workaround for private .jsdos launches. Use Show DOS / troubleshoot during startup if necessary; the original game archive remains unchanged.</p>
           <p><strong>Check GTA version</strong> reports the running DOS executable. Retail GTA may include GTA8.EXE and GTA24.EXE; higher-resolution modes are more likely to be available in the 24-bit version.</p>
           <p><strong>Screen mode (F11)</strong> sends GTA's documented video-mode key while the game runs. It may do nothing in certain game states or editions, and does not itself force 1080p or the maximum mode.</p>
           <p>GTA saves its resolution preference in GTADATA/PLAYER_A.DAT. To keep a confirmed setting, export an updated private .jsdos backup after changing it. Never edit the original game's save data without a backup.</p>

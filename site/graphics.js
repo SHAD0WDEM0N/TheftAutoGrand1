@@ -8,6 +8,7 @@
  */
 export const GRAPHICS_PRESETS = Object.freeze({
   original: { label: 'Original', description: 'Unmodified colours with sharp pixel scaling.' },
+  smart: { label: 'Smart HD (GPU)', description: 'GPU-assisted edge reconstruction for low-resolution game pixels.' },
   enhanced: { label: 'Enhanced Pixels', description: 'True 2x edge-aware pixel scaling on supported low-resolution game frames.' },
   vibrant: { label: 'Vibrant Classic', description: 'Scale2x pixel enhancement with richer colours and contrast.' },
   crt: { label: 'CRT Classic', description: 'Subtle scanlines and a classic-monitor colour treatment.' }

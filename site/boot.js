@@ -12,7 +12,7 @@ export function shouldMaskDosStartup(kind, boot, chosenEdition) {
 
 export function isGtaProgram(runningProgram) {
   return typeof runningProgram === 'string'
-    && /\bGTA(?:8|24)(?:\.EXE)?\b/i.test(runningProgram);
+    && /\b(?:GTA(?:8|24)|GTA_UK|GTA_61)(?:\.EXE)?\b/i.test(runningProgram);
 }
 
 

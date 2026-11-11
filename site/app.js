@@ -4,6 +4,7 @@ import { inspectBundleEditions, bundleWithGameMode } from './editions.js';
 import { isGtaProgram, shouldMaskDosStartup, looksLikeGameFrame, shouldAutoSkipVideoProbe } from './boot.js';
 import { applyGraphicsPreset, GRAPHICS_STORAGE_KEY, normalizeGraphicsPreset, GRAPHICS_PRESETS } from './graphics.js';
 import { canScale2x, needsEnhancedScale2x, scale2xFrame, SCALE2X_FRAME_INTERVAL_MS } from './scale2x.js';
+import { createSmartRenderer, canGpuUpscale, GPU_FRAME_INTERVAL_MS } from './gpu-upscale.js';
 const $ = (id) => document.getElementById(id);
 const CDN = 'https://cdn.jsdelivr.net/npm/js-dos@8.5.3/dist/';
 let player = null, ci = null, bundleUrl = null, busy = false, active = false, paused = false, timer;
@@ -13,10 +14,63 @@ let bootLastFrameCheck = 0, bootGraphicFrames = 0, bootStartedAt = 0;
 let bootScreenshotTimer = null, bootScreenshotMatches = 0, bootGtaDetected = false;
 let bootVideoSkipTimer = null, bootTextModeSamples = 0, bootVideoSkipSent = false;
 let scaleImage = null, scaleWidth = 0, scaleHeight = 0, scaleLastPaint = 0, scaleDisabled = false;
+let gpuRenderer = null, gpuLastFrame = 0, gpuUnavailable = false;
+const londonSources = { london69: null, london61: null };
+let londonChecking = false;
+function chosenGameSource() {
+  const edition = $('game-edition').value;
+  if (edition === 'gta') return playableSource();
+  if (edition === 'london69' && playableSource()) return londonSources.london69;
+  if (edition === 'london61' && playableSource() && londonSources.london69) return londonSources.london61;
+  return null;
+}
+function updateGameEditions() {
+  const base = !!playableSource();
+  const available69 = base && !!londonSources.london69;
+  const available61 = available69 && !!londonSources.london61;
+  for (const option of $('game-edition').options) {
+    if (option.value === 'london69') {
+      option.disabled = !available69;
+      option.textContent = 'London 1969' + (available69 ? '' : ' — add GTA + London 1969 bundle');
+    }
+    if (option.value === 'london61') {
+      option.disabled = !available61;
+      option.textContent = 'London 1961' + (available61 ? '' : ' — needs GTA + London 1969 + 1961');
+    }
+  }
+  if ($('game-edition').selectedOptions[0]?.disabled) $('game-edition').value = 'gta';
+}
+function clearGpu() {
+  $('gpu-canvas').hidden = true;
+  if (gpuRenderer) gpuRenderer.dispose();
+  gpuRenderer = null; gpuLastFrame = 0; gpuUnavailable = false;
+}
+function processGpuFrame(rgb, rgba) {
+  const canvas = $('gpu-canvas');
+  if (!active || !ci || $('graphics-preset').value !== 'smart' || gpuUnavailable) {
+    canvas.hidden = true; return;
+  }
+  if (!rgb && !rgba) return;
+  const width = ci.width(), height = ci.height();
+  if (!canGpuUpscale(width,height)) { canvas.hidden = true; return; }
+  const now = performance.now();
+  if (now - gpuLastFrame < GPU_FRAME_INTERVAL_MS) return;
+  gpuLastFrame = now;
+  try {
+    if (!gpuRenderer) gpuRenderer = createSmartRenderer(canvas);
+    gpuRenderer.render(rgb,rgba,width,height);
+    canvas.hidden = false;
+  } catch (error) {
+    gpuUnavailable = true;
+    canvas.hidden = true;
+    status('Smart HD GPU unavailable (' + error.message + '). Original sharp GTA picture remains available.', 'GPU FALLBACK');
+  }
+}
 function clearScale2x() {
   scaleImage = null; scaleWidth = 0; scaleHeight = 0;
   scaleLastPaint = 0; scaleDisabled = false;
   $('enhanced-canvas').hidden = true;
+  clearGpu();
 }
 function processEnhancedFrame(rgb, rgba) {
   const canvas = $('enhanced-canvas');
@@ -91,6 +145,7 @@ function setGraphicsMode(value, save = true) {
   $('graphics-preset').value = preset;
   $('graphics-startup').value = preset;
   $('enhanced-canvas').hidden = !needsEnhancedScale2x(preset) || !scaleImage || !active;
+  $('gpu-canvas').hidden = preset !== 'smart' || !gpuRenderer || !active;
   if (save) {
     try { localStorage.setItem(GRAPHICS_STORAGE_KEY, preset); }
     catch { /* Graphics work without browser storage. */ }
@@ -109,11 +164,11 @@ const heldKeys = new Map();
 const isTouchDevice = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && matchMedia('(pointer:coarse)').matches);
 function tooLargeForMobile(file) { return mobileBundleRisk(file?.size || 0, isTouchDevice); }
 function mobileNeedsOverride(quick = false) {
-  const file = quick ? savedShortcut?.bundle : (selectedSource?.file || $('game').files[0]);
+  const file = chosenGameSource()?.file || (quick ? savedShortcut?.bundle : (selectedSource?.file || $('game').files[0]));
   return tooLargeForMobile(file) && !$('override-mobile').checked;
 }
 function updateMobileNotice() {
-  const target = playableSource()?.file || $('game').files[0] || (!fileWasChosen && savedShortcut?.bundle);
+  const target = chosenGameSource()?.file || $('game').files[0] || (!fileWasChosen && savedShortcut?.bundle);
   const large = tooLargeForMobile(target);
   $('mobile-warning').hidden = !large;
   if (large) {
@@ -144,10 +199,10 @@ function controls() {
   $('render-backend').disabled = busy || active;
   $('game').disabled = busy || active || checkingSource;
   $('gta-edition').disabled = busy || active || checkingSource;
-  $('auto-video-skip').disabled = busy || active || checkingSource;
-  $('quiet-startup').disabled = busy || active || checkingSource;
-  $('play').disabled = busy || active || checkingSource || !playableSource()
-    || mobileNeedsOverride(playableSource()?.from === 'saved');
+  $('game-edition').disabled = busy || active || checkingSource || londonChecking;
+  for (const id of ['london69-file', 'london61-file']) $(id).disabled = busy || active || londonChecking;
+  $('play').disabled = busy || active || checkingSource || londonChecking || !chosenGameSource()
+    || mobileNeedsOverride(chosenGameSource()?.from === 'saved');
   $('demo').disabled = busy || active;
   for (const id of ['pause', 'fullscreen', 'export']) $(id).disabled = busy || !ci;
   for (const button of document.querySelectorAll('[data-dos-key],[data-hold-key]')) button.disabled = busy || !ci;
@@ -199,7 +254,7 @@ function showBootSplash() {
 
 
 function watchVideoSetupPrompt(commandInterface) {
-  if (!bootSplashActive || !$('auto-video-skip').checked) return;
+  if (!bootSplashActive) return;
   const generation = bootSplashGeneration;
   // Start only after the emulator is ready; the timer is intentionally
   // conservative so it cannot interrupt the initial driver loading steps.
@@ -216,7 +271,7 @@ function watchVideoSetupPrompt(commandInterface) {
     bootTextModeSamples = textMode ? bootTextModeSamples + 1 : 0;
     const elapsedMs = Date.now() - began;
     if (shouldAutoSkipVideoProbe({
-      enabled: $('auto-video-skip').checked,
+      enabled: true,
       elapsedMs, width, height, textModeSamples: bootTextModeSamples,
       graphicFrames: bootGraphicFrames, alreadySent: bootVideoSkipSent
     })) {
@@ -360,7 +415,7 @@ async function end() {
 async function launch(demo = false) {
   busy = true; controls();
   try {
-    const sourceInfo = demo ? null : playableSource();
+    const sourceInfo = demo ? null : chosenGameSource();
     if (!demo && !sourceInfo) throw new Error('Add a file and complete the check before pressing Play GTA.');
     const file = sourceInfo?.file || null;
     const kind = sourceInfo?.kind || null;
@@ -371,12 +426,12 @@ async function launch(demo = false) {
     status('Loading emulator code…', 'LOADING'); await loadLibrary();
     const source = {};
     if (kind === 'jsdos') {
-      const chosenMode = $('gta-edition').value;
+      const chosenMode = $('game-edition').value === 'gta' ? $('gta-edition').value : 'auto';
       const edition = sourceInfo.editions;
       if (chosenMode !== 'auto' && !edition?.available?.includes(chosenMode)) {
         throw new Error('This GTA graphics edition is not verified as available in the selected game bundle.');
       }
-      const quiet = $('quiet-startup').checked;
+      const quiet = true; // Keep the tested working DOS boot path always enabled.
       const startBundle = await bundleWithGameMode(file, edition, chosenMode, { quiet });
       bundleUrl = URL.createObjectURL(startBundle);
       source.url = bundleUrl;
@@ -394,7 +449,7 @@ async function launch(demo = false) {
     }
     clearScale2x();
     $('player').replaceChildren(); active = true; controls();
-    if (!demo && shouldMaskDosStartup(kind, sourceInfo?.editions?.boot, $('gta-edition').value)) {
+    if (!demo && shouldMaskDosStartup(kind, sourceInfo?.editions?.boot, $('game-edition').value === 'gta' ? $('gta-edition').value : 'auto')) {
       showBootSplash();
     } else {
       hideBootSplash(); // Installer ISOs need a visible shell for manual install commands.
@@ -411,6 +466,7 @@ async function launch(demo = false) {
           ci = value; clearTimeout(timer); controls();
           $('skip-video-probe').disabled = !bootSplashActive;
           ci.events().onFrame((rgb, rgba) => processEnhancedFrame(rgb, rgba));
+          ci.events().onFrame((rgb, rgba) => processGpuFrame(rgb, rgba));
           if (bootSplashActive) { watchGtaFrames(ci); watchGtaScreenshots(ci); watchGtaStartup(); watchVideoSetupPrompt(ci); }
           ci.events().onFrameSize((width, height) => { if (width > 0 && height > 0) $('video-mode').textContent = 'Native: ' + width + '×' + height; });
           status(bootSplashActive
@@ -469,6 +525,7 @@ async function checkAddedFile(file) {
     }
     selectedSource = { file, kind: info.kind, from: 'file', editions };
     updateEditionOptions(selectedSource);
+    updateGameEditions();
     showFileState('Ready to start: ' + file.name + ' (' + info.kind.toUpperCase() + '). Game launch not yet tested.', 'ready');
     status(info.description + ' Press Play GTA to start.', 'FILE READY');
     updateMobileNotice();
@@ -483,6 +540,45 @@ async function checkAddedFile(file) {
 $('game').addEventListener('change', () => {
   const file = $('game').files[0];
   if (file) void checkAddedFile(file);
+});
+async function checkLondonBundle(edition, file) {
+  const label = edition === 'london69' ? 'London 1969' : 'London 1961';
+  const statusId = edition === 'london69' ? 'london69-status' : 'london61-status';
+  if (!file) {
+    londonSources[edition] = null;
+    $(statusId).textContent = 'No ' + label + ' bundle added.';
+    updateGameEditions(); controls();
+    return;
+  }
+  londonChecking = true;
+  londonSources[edition] = null;
+  $(statusId).textContent = 'Checking ' + file.name + ' locally…';
+  updateGameEditions(); controls();
+  try {
+    if (!file.name.toLowerCase().endsWith('.jsdos')) throw new Error('Use a prepared DOS .jsdos bundle, not a Windows installer or raw disc image.');
+    const inspected = await inspectGameFile(file);
+    if (inspected.kind !== 'jsdos') throw new Error('This is not a valid DOS .jsdos game bundle.');
+    const editions = await inspectBundleEditions(file);
+    // This is structure validation, not proof that all London expansion
+    // dependencies are present or that its executable will boot successfully.
+    londonSources[edition] = { file, kind:'jsdos', from:'london', editions };
+    $(statusId).textContent = 'Ready to test: ' + file.name + ' (' + (file.size/1048576).toFixed(1) + ' MiB). Bundle structure checked; London game boot not verified.';
+    status(label + ' bundle checked locally. Select the edition before Play.', 'LONDON FILE READY');
+  } catch (error) {
+    $(statusId).textContent = 'Unable to use ' + label + ': ' + error.message;
+    status(label + ' bundle validation failed: ' + error.message, 'INVALID FILE');
+  } finally {
+    londonChecking = false;
+    updateGameEditions(); updateMobileNotice(); controls();
+  }
+}
+for (const [id, edition] of [['london69-file','london69'],['london61-file','london61']]) {
+  $(id).addEventListener('change', () => { void checkLondonBundle(edition, $(id).files[0]); });
+}
+$('game-edition').addEventListener('change', () => {
+  updateGameEditions();
+  updateMobileNotice();
+  controls();
 });
 $('add-file').addEventListener('click', () => $('game').click());
 function handleGraphicsChange(value) {
@@ -525,6 +621,7 @@ $('install-local').addEventListener('click', async () => {
     savedEditionInfo = source.editions;
     savedSourceReady = true;
     fileWasChosen = false;
+    updateGameEditions();
     selectedSource = null;
     $('game').value = '';
     $('file-info').textContent = 'Game saved in this browser. Keep your original Datafile.jsdos as backup.';
@@ -726,6 +823,7 @@ $('forget').addEventListener('click', async () => {
     savedShortcut = null;
     savedSourceReady = false;
     savedEditionInfo = null;
+    updateGameEditions();
     if (!fileWasChosen) updateEditionOptions(null);
     $('quick-info').textContent = 'No saved game stored in this browser.';
     if (!fileWasChosen) showFileState('Add your own ISO or .jsdos file to begin.', 'empty');
@@ -753,6 +851,7 @@ loadPrivateShortcut().then(async record => {
     $('quick-info').textContent = 'Private saved game found on this browser.';
     if (!fileWasChosen) {
       updateEditionOptions({kind:'jsdos', editions:savedEditionInfo});
+      updateGameEditions();
       showFileState('Saved game ready. Press Play GTA.', 'ready');
       status('Saved game bundle checked. Game execution is not yet verified for this session.', 'FILE READY');
       updateMobileNotice();
