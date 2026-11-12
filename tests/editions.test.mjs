@@ -184,7 +184,7 @@ test('London 1961 exposes its 24-bit executable and rejects an invented 8-bit ed
   assert.match(updated, /cd gtados\r\ngta24_61\.exe -nounivbe\r\ncd \.\./);
   assert.doesNotMatch(updated, /call London61\.bat/);
   await assert.rejects(bundleWithGameMode(file, london, 'gta8', {game:'london61'}), /not available/);
-  assert.deepEqual((await inspectLondonGraphicsModes(file, 'london61', await inspectBundleEditions(file))).available, ['auto','gta24']);
+  assert.deepEqual((await inspectLondonGraphicsModes(file, 'london61', await inspectBundleEditions(file))).available, ['auto','gta24','gta24_nolfb']);
 });
 
 test('London switching refuses unknown startup commands and preserves base GTA mode support', () => {
