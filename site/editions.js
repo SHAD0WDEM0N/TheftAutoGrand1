@@ -141,7 +141,7 @@ export async function inspectLondonGraphicsModes(file, game, inspection) {
   return {
     ...inspection,
     graphicsGame: game,
-    available: ['auto', ...Object.keys(targets).filter(mode => names.has(targets[mode]))],
+    available: ['auto', ...Object.keys(targets).filter(mode => names.has(targets[mode])).flatMap(mode => game === 'london61' && mode === 'gta24' ? ['gta24', 'gta24_nolfb'] : [mode])],
     note: game === 'london69'
       ? 'London 1969 supports separate 8-bit and 24-bit executables.'
       : 'London 1961 provides a 24-bit DOS executable; there is no GTA8_61.EXE in this bundle.'
@@ -152,12 +152,35 @@ export async function inspectLondonGraphicsModes(file, game, inspection) {
  * Replace a single "call london.bat" command only inside a temporary
  * DOSBox config. No game files or original London batch scripts are modified.
  */
+/**
+ * Experimental London 1961 VESA compatibility route: disable linear
+ * frame-buffer access while retaining SVGA support. Does not touch the
+ * private game archive or other editions.
+ */
+export function patchLondon61VesaNoLfb(conf) {
+  if (typeof conf !== 'string') throw new Error('Missing DOSBox configuration.');
+  const newline = conf.includes('\r\n') ? '\r\n' : '\n';
+  const header = /^\[dosbox\][ \t]*(?:\r?\n|$)/im.exec(conf);
+  if (!header) return '[dosbox]' + newline + 'machine=vesa_nolfb' + newline + conf;
+  const start = header.index + header[0].length;
+  const tail = conf.slice(start);
+  const next = /^\[[^\]\r\n]+\][ \t]*(?:\r?\n|$)/m.exec(tail);
+  const end = next ? start + next.index : conf.length;
+  let part = conf.slice(start,end);
+  if (/^[ \t]*machine[ \t]*=/im.test(part)) {
+    part = part.replace(/^([ \t]*machine[ \t]*=)[^\r\n]*/im,'$1vesa_nolfb');
+  } else {
+    part = 'machine=vesa_nolfb' + newline + part;
+  }
+  return conf.slice(0,start) + part + conf.slice(end);
+}
+
 export function patchLondonAutoexec(conf, game, mode) {
   if (!['london69', 'london61'].includes(game)) throw new Error('Unsupported London edition.');
   const modes = game === 'london69'
     ? { gta8: 'gta8_uk.exe', gta24: 'gta24_uk.exe -nounivbe' }
     : { gta24: 'gta24_61.exe -nounivbe' };
-  const executable = modes[mode];
+  const executable = modes[game === 'london61' && mode === 'gta24_nolfb' ? 'gta24' : mode];
   if (!executable) throw new Error('Unsupported graphics edition for this London game.');
   const batchName = game === 'london69' ? 'london.bat' : 'london61.bat';
   const autoexec = dosboxAutoexec(conf);
@@ -231,7 +254,8 @@ export async function bundleWithGameMode(file, inspection, mode, { quiet = false
   // DOSBox pixel correction on top caused an elongated framebuffer report.
   // Keep London as-is while its user-confirmed working launch is tested separately.
   const gameConf = game === 'gta' ? patchGta24NoUnivbe(variantConf) : variantConf;
-  const newConf = patchDosPixelAspect(quiet ? patchQuietBoot(gameConf) : gameConf, game !== 'gta');
+  const vesaConf = game === 'london61' && mode === 'gta24_nolfb' ? patchLondon61VesaNoLfb(gameConf) : gameConf;
+  const newConf = patchDosPixelAspect(quiet ? patchQuietBoot(vesaConf) : vesaConf, game !== 'gta');
   if (newConf === inspection.config) return file;
   const zip = await readZipIndex(file);
   const entry = zip.entries.find(e => nameOf(e.name) === CONFIG_PATH.toUpperCase());
