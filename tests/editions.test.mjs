@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
-import { inspectBundleEditions, bundleWithGameMode, patchAutoexecGame, patchQuietBoot, readZipIndex, inspectLondonGraphicsModes, patchLondonAutoexec, patchDosPixelAspect, patchGta24NoUnivbe, patchLondon61VesaNoLfb } from '../site/editions.js';
+import { inspectBundleEditions, bundleWithGameMode, patchAutoexecGame, patchQuietBoot, readZipIndex, inspectLondonGraphicsModes, patchLondonAutoexec, patchDosPixelAspect, patchGta24NoUnivbe, patchLondon61VesaNoLfb, patchLondon61VesaOldVbe } from '../site/editions.js';
 
 function makeBundle(files, config = [
   '[sdl]', 'autolock=false',
@@ -178,13 +178,13 @@ test('London 1961 exposes its 24-bit executable and rejects an invented 8-bit ed
   const conf = '[autoexec]\r\n@echo off\r\nmount c .\r\nc:\r\ncall London61.bat\r\n';
   const file = makeBundle(['GTADOS/Gta24_61.exe','GTADOS/GTA24_UK.EXE','London61.bat'], conf);
   const london = await inspectLondonGraphicsModes(file, 'london61', await inspectBundleEditions(file));
-  assert.deepEqual(london.available, ['auto','gta24','gta24_nolfb']);
+  assert.deepEqual(london.available, ['auto','gta24','gta24_nolfb','gta24_oldvbe']);
   const patched = await bundleWithGameMode(file, london, 'gta24', {quiet: true, game: 'london61'});
   const updated = (await inspectBundleEditions(patched)).config;
   assert.match(updated, /cd gtados\r\ngta24_61\.exe -nounivbe\r\ncd \.\./);
   assert.doesNotMatch(updated, /call London61\.bat/);
   await assert.rejects(bundleWithGameMode(file, london, 'gta8', {game:'london61'}), /not available/);
-  assert.deepEqual((await inspectLondonGraphicsModes(file, 'london61', await inspectBundleEditions(file))).available, ['auto','gta24','gta24_nolfb']);
+  assert.deepEqual((await inspectLondonGraphicsModes(file, 'london61', await inspectBundleEditions(file))).available, ['auto','gta24','gta24_nolfb','gta24_oldvbe']);
 });
 
 test('London switching refuses unknown startup commands and preserves base GTA mode support', () => {
@@ -290,4 +290,27 @@ test('VESA no-LFB config patch preserves CRLF and unrelated settings', () => {
   const next=patchLondon61VesaNoLfb(conf);
   assert.match(next,/machine=vesa_nolfb\r\nmemsize=32/);
   assert.equal(patchLondon61VesaNoLfb(next),next);
+});
+
+
+test('London 1961 optional VESA 1.2 startup keeps original default and executable unchanged', async () => {
+  const conf='[dosbox]\nmachine=svga_s3\nmemsize=32\n[autoexec]\nmount c .\nc:\ncall london61.bat\n';
+  const original=makeBundle(['GTADOS/GTA24_61.EXE','london61.bat'],conf);
+  const graphics=await inspectLondonGraphicsModes(original,'london61',await inspectBundleEditions(original));
+  assert.ok(graphics.available.includes('gta24_oldvbe'));
+  const output=await bundleWithGameMode(original,graphics,'gta24_oldvbe',{quiet:true,game:'london61'});
+  const cfg=(await inspectBundleEditions(output)).config;
+  assert.match(cfg,/machine=vesa_oldvbe/);
+  assert.match(cfg,/gta24_61\.exe -nounivbe/);
+  assert.match(cfg,/aspect=true/);
+  assert.equal((await inspectBundleEditions(original)).config, conf);
+  const def=await bundleWithGameMode(original,graphics,'auto',{quiet:true,game:'london61'});
+  assert.match((await inspectBundleEditions(def)).config,/machine=svga_s3/);
+});
+test('London VBE 1.2 patch is idempotent and preserves DOS settings', () => {
+  const conf='[dosbox]\r\nmachine=svga_s3\r\nmemsize=32\r\n[autoexec]\r\nGTA24_61.EXE\r\n';
+  const patched=patchLondon61VesaOldVbe(conf);
+  assert.match(patched,/machine=vesa_oldvbe\r\nmemsize=32/);
+  assert.equal(patchLondon61VesaOldVbe(patched),patched);
+  assert.match(patchLondon61VesaOldVbe('[autoexec]\nGTA24_61.EXE\n'),/\[dosbox\]\nmachine=vesa_oldvbe/);
 });
