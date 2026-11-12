@@ -77,7 +77,7 @@ test('changing London edition reconstructs the executable selector before Play',
   assert.match(app, /game === 'london69'/);
   assert.match(app, /game === 'london61'/);
   assert.match(app, /updateEditionOptions\(chosenGameSource\(\)\)/);
-  assert.match(html, /app\.js\?v=london61-vesa-test-20261112/);
+  assert.match(html, /app\.js\?v=london61-vbe12-test-20261112/);
   assert.match(html, /style\.css\?v=800x600-fourthree-20261111/);
 });
 
