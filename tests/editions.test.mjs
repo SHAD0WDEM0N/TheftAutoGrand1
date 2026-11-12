@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
-import { inspectBundleEditions, bundleWithGameMode, patchAutoexecGame, patchQuietBoot, readZipIndex, inspectLondonGraphicsModes, patchLondonAutoexec, patchDosPixelAspect, patchGta24NoUnivbe } from '../site/editions.js';
+import { inspectBundleEditions, bundleWithGameMode, patchAutoexecGame, patchQuietBoot, readZipIndex, inspectLondonGraphicsModes, patchLondonAutoexec, patchDosPixelAspect, patchGta24NoUnivbe, patchLondon61VesaNoLfb } from '../site/editions.js';
 
 function makeBundle(files, config = [
   '[sdl]', 'autolock=false',
@@ -268,4 +268,26 @@ test('UniVBE option patch is idempotent and preserves existing GTA24 flags', () 
   const protectedConf = '[autoexec]\nREM GTA24.EXE\nGTA24.EXE -nounivbe\n';
   assert.equal(patchGta24NoUnivbe(protectedConf),protectedConf);
   assert.equal(patchGta24NoUnivbe('[autoexec]\ncall london.bat\n'), '[autoexec]\ncall london.bat\n');
+});
+
+
+test('London 1961 optional VESA no-LFB patch changes only the temporary config', async () => {
+  const conf='[dosbox]\nmachine=svga_s3\nmemsize=32\n[autoexec]\nmount c .\nc:\ncall london61.bat\n';
+  const game = makeBundle(['gtados/Gta24_61.exe','London61.bat'],conf);
+  const info = await inspectLondonGraphicsModes(game,'london61',await inspectBundleEditions(game));
+  assert.ok(info.available.includes('gta24_nolfb'));
+  const testBundle = await bundleWithGameMode(game,info,'gta24_nolfb',{quiet:true,game:'london61'});
+  const output = (await inspectBundleEditions(testBundle)).config;
+  assert.match(output, /machine=vesa_nolfb/);
+  assert.match(output, /gta24_61.exe -nounivbe/);
+  assert.match(output, /aspect=true/);
+  assert.equal((await inspectBundleEditions(game)).config,conf);
+  const defaultBundle = await bundleWithGameMode(game,info,'auto',{quiet:true,game:'london61'});
+  assert.match((await inspectBundleEditions(defaultBundle)).config, /machine=svga_s3/);
+});
+test('VESA no-LFB config patch preserves CRLF and unrelated settings', () => {
+  const conf='[dosbox]\r\nmachine=svga_s3\r\nmemsize=32\r\n[autoexec]\r\nGTA24_61.EXE\r\n';
+  const next=patchLondon61VesaNoLfb(conf);
+  assert.match(next,/machine=vesa_nolfb\r\nmemsize=32/);
+  assert.equal(patchLondon61VesaNoLfb(next),next);
 });
