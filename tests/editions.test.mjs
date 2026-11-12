@@ -178,7 +178,7 @@ test('London 1961 exposes its 24-bit executable and rejects an invented 8-bit ed
   const conf = '[autoexec]\r\n@echo off\r\nmount c .\r\nc:\r\ncall London61.bat\r\n';
   const file = makeBundle(['GTADOS/Gta24_61.exe','GTADOS/GTA24_UK.EXE','London61.bat'], conf);
   const london = await inspectLondonGraphicsModes(file, 'london61', await inspectBundleEditions(file));
-  assert.deepEqual(london.available, ['auto','gta24']);
+  assert.deepEqual(london.available, ['auto','gta24','gta24_nolfb']);
   const patched = await bundleWithGameMode(file, london, 'gta24', {quiet: true, game: 'london61'});
   const updated = (await inspectBundleEditions(patched)).config;
   assert.match(updated, /cd gtados\r\ngta24_61\.exe -nounivbe\r\ncd \.\./);
