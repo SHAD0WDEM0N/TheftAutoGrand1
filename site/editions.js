@@ -141,7 +141,7 @@ export async function inspectLondonGraphicsModes(file, game, inspection) {
   return {
     ...inspection,
     graphicsGame: game,
-    available: ['auto', ...Object.keys(targets).filter(mode => names.has(targets[mode])).flatMap(mode => game === 'london61' && mode === 'gta24' ? ['gta24', 'gta24_nolfb'] : [mode])],
+    available: ['auto', ...Object.keys(targets).filter(mode => names.has(targets[mode])).flatMap(mode => game === 'london61' && mode === 'gta24' ? ['gta24', 'gta24_nolfb', 'gta24_oldvbe'] : [mode])],
     note: game === 'london69'
       ? 'London 1969 supports separate 8-bit and 24-bit executables.'
       : 'London 1961 provides a 24-bit DOS executable; there is no GTA8_61.EXE in this bundle.'
@@ -175,12 +175,18 @@ export function patchLondon61VesaNoLfb(conf) {
   return conf.slice(0,start) + part + conf.slice(end);
 }
 
+/** Test older VESA BIOS 1.2 rather than the default S3 VBE 2.0 API. */
+export function patchLondon61VesaOldVbe(conf) {
+  const nolfb = patchLondon61VesaNoLfb(conf);
+  return nolfb.replace(/^([ \t]*machine[ \t]*=)vesa_nolfb[ \t]*$/im, '$1vesa_oldvbe');
+}
+
 export function patchLondonAutoexec(conf, game, mode) {
   if (!['london69', 'london61'].includes(game)) throw new Error('Unsupported London edition.');
   const modes = game === 'london69'
     ? { gta8: 'gta8_uk.exe', gta24: 'gta24_uk.exe -nounivbe' }
     : { gta24: 'gta24_61.exe -nounivbe' };
-  const executable = modes[game === 'london61' && mode === 'gta24_nolfb' ? 'gta24' : mode];
+  const executable = modes[game === 'london61' && (mode === 'gta24_nolfb' || mode === 'gta24_oldvbe') ? 'gta24' : mode];
   if (!executable) throw new Error('Unsupported graphics edition for this London game.');
   const batchName = game === 'london69' ? 'london.bat' : 'london61.bat';
   const autoexec = dosboxAutoexec(conf);
@@ -254,7 +260,9 @@ export async function bundleWithGameMode(file, inspection, mode, { quiet = false
   // DOSBox pixel correction on top caused an elongated framebuffer report.
   // Keep London as-is while its user-confirmed working launch is tested separately.
   const gameConf = game === 'gta' ? patchGta24NoUnivbe(variantConf) : variantConf;
-  const vesaConf = game === 'london61' && mode === 'gta24_nolfb' ? patchLondon61VesaNoLfb(gameConf) : gameConf;
+  const vesaConf = game === 'london61' && mode === 'gta24_nolfb' ? patchLondon61VesaNoLfb(gameConf)
+    : game === 'london61' && mode === 'gta24_oldvbe' ? patchLondon61VesaOldVbe(gameConf)
+      : gameConf;
   const newConf = patchDosPixelAspect(quiet ? patchQuietBoot(vesaConf) : vesaConf, game !== 'gta');
   if (newConf === inspection.config) return file;
   const zip = await readZipIndex(file);

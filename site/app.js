@@ -162,7 +162,8 @@ function updateEditionOptions(source) {
     : game === 'london61'
       ? [['auto', 'Default · London 1961'],
          ['gta24', '24-bit · GTA24_61.EXE'],
-         ['gta24_nolfb', 'Compatibility test · VESA no-LFB']]
+         ['gta24_nolfb', 'Compatibility test · VESA no-LFB'],
+         ['gta24_oldvbe', 'Compatibility test · VESA 1.2 (older BIOS)']]
       : [['auto', 'Original (bundle default)'],
          ['gta8', 'Standard · GTA8.EXE'],
          ['gta24', 'High Colour · GTA24.EXE']];
@@ -177,7 +178,7 @@ function updateEditionOptions(source) {
   note.textContent = !editions || source?.kind !== 'jsdos'
     ? 'Load a compatible .jsdos bundle to choose its DOS executable.'
     : editions.graphicsGame
-      ? editions.note + (game === 'london61' ? ' VESA no-LFB is an optional graphics corruption test; use Default to restore the working configuration.' : ' Experimental 24-bit modes may show a black screen. Use Default to restore the working launcher.')
+      ? editions.note + (game === 'london61' ? ' VESA compatibility tests are optional and unverified; use Default to restore the playable configuration.' : ' Experimental 24-bit modes may show a black screen. Use Default to restore the working launcher.')
       : 'Detected: ' + editions.detected.map(mode => mode === 'gta8' ? 'GTA8.EXE' : 'GTA24.EXE').join(' and ') +
         '. ' + editions.note + ' 3dfx requires a tested Glide-capable backend.';
 }
