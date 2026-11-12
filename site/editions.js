@@ -84,6 +84,27 @@ export function patchAutoexecGame(conf, mode) {
   return autoexec.before + updated.join('\n') + autoexec.after;
 }
 
+
+/**
+ * GTA24's bundled UniVBE driver can select unusable SVGA modes in DOSBox.
+ * Skip that driver for a direct GTA24 command; keep all other startup lines
+ * intact and preserve flags already supplied by the user.
+ */
+export function patchGta24NoUnivbe(conf) {
+  const autoexec = dosboxAutoexec(conf);
+  if (!autoexec) return conf;
+  const newline = conf.includes('\r\n') ? '\r\n' : '\n';
+  let changed = false;
+  const lines = autoexec.commands.split(/\r?\n/).map(line => {
+    if (/^\s*(?:REM\b|::|#)/i.test(line)) return line;
+    const match = /^(\s*(?:call\s+)?(?:[a-z]:)?(?:[^\s]*[\\/])?GTA24(?:\.EXE)?)(\s+.*)?$/i.exec(line);
+    if (!match || /(?:^|\s)-nounivbe(?:\s|$)/i.test(match[2] || '')) return line;
+    changed = true;
+    return match[1] + (match[2] || '') + ' -nounivbe';
+  });
+  return changed ? autoexec.before + lines.join(newline) + autoexec.after : conf;
+}
+
 /**
  * Keep every existing mount, driver and GTA command in place; silence echoed
  * command lines and clear the initial DOS banner only. This cannot skip a
@@ -209,7 +230,8 @@ export async function bundleWithGameMode(file, inspection, mode, { quiet = false
   // GTA 1997 is already corrected to 4:3 by the js-dos player; forcing
   // DOSBox pixel correction on top caused an elongated framebuffer report.
   // Keep London as-is while its user-confirmed working launch is tested separately.
-  const newConf = patchDosPixelAspect(quiet ? patchQuietBoot(variantConf) : variantConf, game !== 'gta');
+  const gameConf = game === 'gta' ? patchGta24NoUnivbe(variantConf) : variantConf;
+  const newConf = patchDosPixelAspect(quiet ? patchQuietBoot(gameConf) : gameConf, game !== 'gta');
   if (newConf === inspection.config) return file;
   const zip = await readZipIndex(file);
   const entry = zip.entries.find(e => nameOf(e.name) === CONFIG_PATH.toUpperCase());

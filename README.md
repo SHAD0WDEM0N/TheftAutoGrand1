@@ -1,3 +1,9 @@
+## GTA24 video-mode compatibility test
+
+For **base GTA 1997 only**, when the verified DOSBox startup runs `GTA24.EXE` directly, the browser now adds `-nounivbe` to its temporary in-memory startup config. This avoids GTA's bundled UniVBE TSR, which is reported to cause incompatible SVGA mode selection in some DOSBox environments. Existing GTA24 command flags are retained, and the argument is not duplicated. GTA8 and both London mission packs are unchanged. No source bundle or player save file is modified.
+
+This is a diagnostic compatibility fix rather than a guaranteed resolution change; the game still selects the native mode via F11. The 800×600 browser viewport remains separate from GTA's native video mode. If the screen is still malformed, capture the new emulator frame reading and game program after launch rather than stretching it again.
+
 ## Native DOS pixel-aspect correction — default
 
 The launcher now enables DOSBox `[render] aspect=true` automatically for private GTA and London `.jsdos` bundles. This is the classic DOSBox option for correcting non-square VGA pixel modes such as 320×200, without forcing unsupported 800×600×32-bit video modes. It is applied only to the **temporary in-memory bundle's** `.jsdos/dosbox.conf` during Play. The original user-supplied file, selected executable, game data and autoexec commands are untouched. Existing `[render]` parameters are preserved, and files lacking a `[render]` section receive one. The website's 800×600 4:3 display frame and existing browser rendering options remain as before.

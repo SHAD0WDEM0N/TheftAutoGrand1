@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
-import { inspectBundleEditions, bundleWithGameMode, patchAutoexecGame, patchQuietBoot, readZipIndex, inspectLondonGraphicsModes, patchLondonAutoexec, patchDosPixelAspect } from '../site/editions.js';
+import { inspectBundleEditions, bundleWithGameMode, patchAutoexecGame, patchQuietBoot, readZipIndex, inspectLondonGraphicsModes, patchLondonAutoexec, patchDosPixelAspect, patchGta24NoUnivbe } from '../site/editions.js';
 
 function makeBundle(files, config = [
   '[sdl]', 'autolock=false',
@@ -242,4 +242,30 @@ test('base GTA does not receive redundant DOSBox pixel scaling on top of js-dos 
   assert.equal((await inspectBundleEditions(input)).config, conf);
   assert.equal(patchDosPixelAspect(conf,false), patchDosPixelAspect(patchDosPixelAspect(conf,false),false));
   assert.match(patchDosPixelAspect('[autoexec]\nGTA8.EXE\n', false), /\[render\]\naspect=false/);
+});
+
+
+test('base GTA24 launches with -nounivbe while GTA8 stays unchanged', async () => {
+  const conf = '[autoexec]\r\nmount c .\r\nc:\r\ncd GTADOS\r\nGTA24.EXE\r\n';
+  const file = makeBundle(['GTADOS/GTA24.EXE','GTADOS/GTA8.EXE'], conf);
+  const info = await inspectBundleEditions(file);
+  const output = await bundleWithGameMode(file, info, 'auto', {quiet:true,game:'gta'});
+  const updated = (await inspectBundleEditions(output)).config;
+  assert.match(updated, /GTA24\.EXE -nounivbe/);
+  assert.equal((await inspectBundleEditions(file)).config, conf, 'original bundle unchanged');
+  assert.match(updated, /aspect=false/);
+  const gta8 = await bundleWithGameMode(file, info, 'gta8', {quiet:true,game:'gta'});
+  const gta8Config = (await inspectBundleEditions(gta8)).config;
+  assert.match(gta8Config, /GTA8\.EXE/);
+  assert.doesNotMatch(gta8Config, /-nounivbe/);
+});
+
+test('UniVBE option patch is idempotent and preserves existing GTA24 flags', () => {
+  const conf = '[autoexec]\n@echo off\nC:\\GTADOS\\GTA24.EXE -foobar\n';
+  const output = patchGta24NoUnivbe(conf);
+  assert.match(output, /GTA24\.EXE -foobar -nounivbe/);
+  assert.equal(patchGta24NoUnivbe(output),output);
+  const protectedConf = '[autoexec]\nREM GTA24.EXE\nGTA24.EXE -nounivbe\n';
+  assert.equal(patchGta24NoUnivbe(protectedConf),protectedConf);
+  assert.equal(patchGta24NoUnivbe('[autoexec]\ncall london.bat\n'), '[autoexec]\ncall london.bat\n');
 });
